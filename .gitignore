@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+.vercel
+scripts/__pycache__/
+scripts/*.log
+# Raw source datasets are large and live outside the repo — never commit them.
+data_raw/
+scripts/.uniprot_map.json

@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Archipelago — AlphaMissense island explorer</title>
+    <meta
+      name="description"
+      content="Archipelago — type a gene and explore its AlphaMissense missense saturation map, pathogenic islands, ClinVar variants and protein domains."
+    />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8F%9D%EF%B8%8F%3C/text%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <!-- Reusable SVG defs: Archipelago mark + SeqOne logo -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+      <!-- Archipelago: islands seen from above on a blue sea; red flags mark the
+           pathogenic ones. -->
+      <symbol id="archi-logo" viewBox="0 0 32 32">
+        <circle cx="16" cy="16" r="15" fill="#cbe5f6" />
+        <path d="M15 17c2.6-.6 5-.2 5.4 1.3.5 1.7-1.4 3.1-4 3.7-3 .7-6.6.4-7-1.4-.4-1.9 2.6-3 5.6-3.6z" fill="#7fc99b" />
+        <ellipse cx="21.5" cy="10.5" rx="4.2" ry="3" fill="#7fc99b" />
+        <ellipse cx="23" cy="21.5" rx="2.6" ry="1.9" fill="#8ed3a8" />
+        <g stroke="#2a3b4d" stroke-width="1.1" stroke-linecap="round">
+          <line x1="10.5" y1="19.4" x2="10.5" y2="12.6" />
+          <line x1="21.5" y1="10.5" x2="21.5" y2="4.6" />
+        </g>
+        <path d="M10.5 12.6 15 13.9 10.5 15.4z" fill="#de1353" />
+        <path d="M21.5 4.6 25.8 5.8 21.5 7.3z" fill="#de1353" />
+      </symbol>
+      <symbol id="seqone-logo" viewBox="0 0 24 23">
+        <path d="M14.3937 8.19774C14.3083 8.19774 14.2216 8.18204 14.1368 8.14875L10.9195 6.87865C10.5602 6.73669 10.3843 6.33028 10.5256 5.97099C10.6682 5.61169 11.0734 5.43581 11.4333 5.57714L14.6513 6.84787C15.0099 6.9892 15.1864 7.39624 15.0445 7.75491C14.9358 8.03003 14.6726 8.19774 14.3937 8.19774Z" fill="#16D6A8"/>
+        <path d="M6.08948 16.5409C5.96322 16.5409 5.83571 16.5063 5.72013 16.4347C5.39224 16.2306 5.29236 15.7991 5.49651 15.4712C8.16548 11.1891 12.1108 10.9335 12.2779 10.9247C15.3765 10.7306 17.19 8.30345 17.9946 6.87443C18.1843 6.53712 18.6102 6.41903 18.9475 6.6081C19.2842 6.79717 19.4035 7.22431 19.2138 7.56036C18.2698 9.23687 16.124 12.0855 12.3583 12.321C12.2164 12.3298 8.95191 12.5717 6.6837 16.2111C6.55116 16.4241 6.32314 16.5409 6.08948 16.5409Z" fill="#16D6A8"/>
+        <path d="M10.9929 10.046C10.7065 10.046 10.437 9.86826 10.3347 9.58245C9.57209 7.45808 9.85413 5.32177 10.2241 3.90343C10.3221 3.52969 10.7053 3.3067 11.0777 3.40343C11.4521 3.50142 11.6757 3.88333 11.5777 4.25708C11.3152 5.26147 10.976 7.22818 11.6512 9.11009C11.7819 9.47316 11.5928 9.87454 11.2291 10.0046C11.1512 10.0328 11.0715 10.046 10.9929 10.046Z" fill="#16D6A8"/>
+        <path d="M13.9123 19.6773C13.864 19.6773 13.8143 19.6723 13.7653 19.6616C13.3872 19.5806 13.1466 19.2087 13.2276 18.8312C13.5832 17.1692 13.4984 15.585 12.9751 14.122C12.8451 13.7583 13.0342 13.3582 13.3979 13.2276C13.7616 13.0975 14.1617 13.2866 14.2923 13.6509C14.9042 15.3626 15.0065 17.2037 14.5957 19.1239C14.5254 19.4524 14.2352 19.6773 13.9123 19.6773Z" fill="#16D6A8"/>
+        <path d="M13.5403 17.7663C13.4549 17.7663 13.3682 17.7506 13.284 17.7173L10.0667 16.4465C9.70741 16.3046 9.5309 15.8982 9.67286 15.5389C9.81482 15.1796 10.2212 15.0031 10.5805 15.145L13.7979 16.4158C14.1572 16.5577 14.333 16.9641 14.1911 17.3234C14.083 17.5985 13.8192 17.7663 13.5403 17.7663Z" fill="#16D6A8"/>
+        <path d="M4.08039 18.8054C3.75376 18.8054 3.4309 18.659 3.21733 18.3801C1.69409 16.3902 0.888184 14.0101 0.888184 11.4969C0.888184 5.24883 5.97173 0.165283 12.2205 0.165283C14.211 0.165283 16.1696 0.688524 17.8838 1.67973C18.4026 1.97935 18.5804 2.6433 18.2801 3.16214C17.9805 3.68099 17.3185 3.85938 16.7971 3.55913C15.4127 2.75888 13.8304 2.33614 12.2205 2.33614C7.16896 2.33614 3.05904 6.44543 3.05904 11.4969C3.05904 13.529 3.71042 15.4523 4.94095 17.0604C5.30527 17.5359 5.21482 18.2174 4.73931 18.5817C4.54208 18.7325 4.31029 18.8054 4.08039 18.8054Z" fill="#004157"/>
+        <path d="M12.2209 22.8298C10.3647 22.8298 8.52301 22.3712 6.89612 21.5032C6.36723 21.2205 6.16685 20.5628 6.44952 20.0346C6.73218 19.5057 7.38984 19.3059 7.91811 19.5873C9.23155 20.2883 10.7196 20.6589 12.2209 20.6589C17.2724 20.6589 21.3817 16.549 21.3817 11.4975C21.3817 9.52702 20.7661 7.64951 19.6009 6.06911C19.2454 5.5867 19.3484 4.90642 19.8308 4.55089C20.3126 4.19537 20.9922 4.29775 21.3484 4.78079C22.7906 6.73745 23.5525 9.05969 23.5525 11.4975C23.5525 17.7462 18.469 22.8298 12.2209 22.8298Z" fill="#004157"/>
+      </symbol>
+    </svg>
+
+    <div id="app">
+      <!-- Landing / hero search -->
+      <section id="landing" class="landing">
+        <div class="hero">
+          <div class="brand">
+            <svg class="brand-mark" width="48" height="48" viewBox="0 0 32 32"><use href="#archi-logo" /></svg>
+            <span class="brand-name">Archipelago</span>
+          </div>
+          <p class="eyebrow">AlphaMissense island explorer</p>
+          <h1>Explore any human gene's<br /><em>missense saturation map</em></h1>
+          <p class="lede">
+            AlphaMissense scores for every substitution, pathogenic islands,
+            ClinVar variants and protein domains — in one view.
+          </p>
+
+          <form id="search-form" class="searchbar" role="search" autocomplete="off">
+            <svg class="search-ico" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="7"></circle>
+              <line x1="16.5" y1="16.5" x2="21" y2="21"></line>
+            </svg>
+            <input id="search-input" type="text" name="gene"
+              placeholder="Search a gene — e.g. KIF1A, TP53, BRCA1"
+              aria-label="Gene symbol" spellcheck="false" />
+            <ul id="suggest" class="suggest" role="listbox" hidden></ul>
+          </form>
+
+          <div class="examples">
+            <span class="examples-label">Try</span>
+            <div id="example-chips" class="chips"></div>
+          </div>
+
+          <p class="index-status"><span id="index-status">Loading gene index…</span>
+            <span class="dot-sep">·</span>
+            <a href="?page=methods" class="link-methods" data-methods>How the islands work →</a>
+          </p>
+        </div>
+        <footer class="landing-foot">
+          <span class="sources">AlphaMissense (DeepMind, CC BY-NC-SA 4.0) · ClinVar v107 2025-10 · MANE Select · UniProt domains</span>
+          <span class="love">From <svg class="love-mark" width="15" height="14" viewBox="0 0 24 23"><use href="#seqone-logo" /></svg> SeqOne with <span class="heart">♥</span></span>
+        </footer>
+      </section>
+
+      <!-- Methods / about -->
+      <section id="about" class="about" hidden>
+        <header class="topbar">
+          <button class="ghost" data-home>← Search</button>
+          <div class="brand mini"><svg class="brand-mark" width="30" height="30" viewBox="0 0 32 32"><use href="#archi-logo" /></svg><span class="brand-name">Archipelago</span></div>
+          <button id="theme-btn-2" class="ghost theme-toggle" title="Toggle theme">◐</button>
+        </header>
+        <div id="about-root" class="about-root"></div>
+      </section>
+
+      <!-- Viewer -->
+      <section id="viewer" class="viewer" hidden>
+        <header class="topbar">
+          <button class="brand mini brand-btn" data-home title="Back to search">
+            <svg class="brand-mark" width="30" height="30" viewBox="0 0 32 32"><use href="#archi-logo" /></svg>
+            <span class="brand-name">Archipelago</span>
+          </button>
+          <form id="search-form-top" class="searchbar mini" role="search" autocomplete="off">
+            <input id="search-input-top" type="text" placeholder="Search a gene…"
+              aria-label="Gene symbol" spellcheck="false" />
+            <ul id="suggest-top" class="suggest" role="listbox" hidden></ul>
+          </form>
+          <a href="?page=methods" class="ghost" data-methods>Methods</a>
+          <button id="theme-btn" class="ghost theme-toggle" title="Toggle theme">◐</button>
+        </header>
+        <div id="viewer-root"></div>
+      </section>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
