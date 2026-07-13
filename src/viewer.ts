@@ -11,6 +11,8 @@ export interface Bundle {
   clinvar: CVar[]; clinvar_benign: CVar[];
   /** ClinVar variant counts by consequence: {missense|lof|other: [P/LP, B/LB]}. */
   cv_counts?: Record<"missense" | "lof" | "other", [number, number]>;
+  /** cancerhotspots.org residue hotspots (present only for genes with entries). */
+  hotspots?: { p: number; r: string; q?: number; n?: number; onc: number }[];
 }
 
 const ICON: Record<string, string> = {
@@ -20,11 +22,12 @@ const ICON: Record<string, string> = {
   island: `<svg class="kpi-i" viewBox="0 0 24 24"><path d="M7.5 13.5C9 8 10.5 6 12 6s3 2 4.5 7.5"/><path d="M3 16.5c1.8-1.8 3.6-1.8 5.4 0s3.6 1.8 5.4 0 3.6-1.8 5.4 0"/><path d="M3 20c1.8-1.8 3.6-1.8 5.4 0s3.6 1.8 5.4 0 3.6-1.8 5.4 0"/></svg>`,
   layers: `<svg class="kpi-i" viewBox="0 0 24 24"><path d="M12 3l8.5 4.5L12 12 3.5 7.5z"/><path d="M4 12.5l8 4.2 8-4.2"/></svg>`,
   expand: `<svg class="kpi-x" viewBox="0 0 24 24"><path d="M9 4H4v5"/><path d="M15 20h5v-5"/><path d="M4 4l6 6"/><path d="M20 20l-6-6"/></svg>`,
+  target: `<svg class="kpi-i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.4"/></svg>`,
 };
 
 const B_REF = 251, B_MISSING = 252, Q_MAX = 250;
 const CUTOFF_B = 0.34, CUTOFF_P = 0.564;
-const AXIS = 22, DOM = 34, ISL = 26, CVH = 66, SCORE = 76, ROWH = 15;
+const AXIS = 22, DOM = 34, ISL = 26, HOTS = 26, CVH = 66, SCORE = 76, ROWH = 15;
 
 const css = (v: string) =>
   getComputedStyle(document.documentElement).getPropertyValue(v).trim();
@@ -115,6 +118,7 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
     : 0;
   const islandResidues = b.islands.reduce((s, i) => s + (i.e - i.s + 1), 0);
   const hasBd = !!(b.cv_counts && Object.values(b.cv_counts).some((v) => v[0] + v[1] > 0));
+  const hasHot = !!(b.hotspots && b.hotspots.length);
 
   root.innerHTML = `
     <div class="vhead">
@@ -151,6 +155,11 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
           <div class="kpi-n">${b.domains.length}</div>
           <div class="kpi-sub">UniProt features</div>
         </div>
+        ${hasHot ? `<div class="kpi">
+          <div class="kpi-head">${ICON.target}<span>Cancer hotspots</span></div>
+          <div class="kpi-n">${b.hotspots!.length}</div>
+          <div class="kpi-sub">cancerhotspots.org</div>
+        </div>` : ""}
       </div>
     </div>
     <div class="card">
@@ -166,6 +175,7 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
           <span class="key"><i class="sw islb"></i>B-rich</span>
           <span class="key"><i class="sw isln"></i>no ClinVar</span>
           <span class="key"><i class="sw domain"></i>Domain</span>
+          ${hasHot ? `<span class="key"><i class="sw hotspot"></i>Cancer hotspot</span>` : ""}
         </div>
         <div class="zoom">
           <button id="v-png" title="Download a PNG of the whole plot">Save PNG</button>
@@ -181,6 +191,7 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
             <canvas id="v-axt"></canvas>
             <canvas id="v-dom"></canvas>
             <canvas id="v-isl"></canvas>
+            ${hasHot ? `<canvas id="v-hot"></canvas>` : ""}
             <canvas id="v-cv"></canvas>
             <canvas id="v-score"></canvas>
             <canvas id="v-heat"></canvas>
@@ -220,6 +231,7 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
     { id: "v-axt", h: AXIS, label: "" },
     { id: "v-dom", h: DOM, label: "Domains" },
     { id: "v-isl", h: ISL, label: "AM islands" },
+    ...(hasHot ? [{ id: "v-hot", h: HOTS, label: "Cancer hotspots" }] : []),
     { id: "v-cv", h: CVH, label: "ClinVar" },
     { id: "v-score", h: SCORE, label: "Mean AM" },
     { id: "v-heat", h: HEAT, label: "" },
@@ -334,6 +346,17 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
     if (plp + blb === 0) return css("--isl-none");
     return divergeColor((plp - blb) / (plp + blb));
   }
+  function drawHotspots(): void {
+    const ctx = ctxFor("v-hot", HOTS); const y = HOTS / 2;
+    for (const h of b.hotspots!) {
+      const x = X(h.p) + Math.max(colW / 2, 0.5);
+      const r = 3 + Math.min((h.n || 1) / 20, 3);
+      ctx.beginPath();
+      ctx.moveTo(x, y - r); ctx.lineTo(x + r, y); ctx.lineTo(x, y + r); ctx.lineTo(x - r, y); ctx.closePath();
+      if (h.onc) { ctx.fillStyle = css("--hotspot"); ctx.fill(); }
+      else { ctx.strokeStyle = css("--hotspot"); ctx.lineWidth = 1.5; ctx.stroke(); }
+    }
+  }
   function drawIsl(): void {
     const ctx = ctxFor("v-isl", ISL);
     for (const i of b.islands) {
@@ -380,6 +403,7 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
     stack.style.width = w + "px";
     ($("v-z") as HTMLInputElement).value = String(colW);
     drawHeat(); drawScore(); drawClinvar(); drawIsl(); drawDom();
+    if (hasHot) drawHotspots();
     drawAxis("v-axt", true); drawAxis("v-axb", false);
     xhair.style.height = LANES.reduce((s, l) => s + l.h, 0) + "px";
   }
@@ -412,10 +436,13 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
     const m = b.mean[pi];
     const isl = b.islands.find((i) => p >= i.s && p <= i.e);
     const dom = b.domains.find((d) => p >= d.s && p <= d.e);
+    const hot = b.hotspots?.find((h) => h.p === p);
     const cvp = cvMap.get(p), cvb = cvbMap.get(p);
     tip.innerHTML = `<div class="th">${refAA} ${p}</div>`
       + `<div class="row"><span>Mean AM</span><b>${m != null ? m.toFixed(3) : "—"}</b></div>`
       + (cvp ? cvRow(cvp, p) : "") + (cvb ? cvRow(cvb, p) : "")
+      + (hot ? `<div class="row"><span>Cancer hotspot</span><b>${hot.r}${hot.p}${hot.onc ? " · OncoKB" : ""}</b></div>`
+        + `<div class="row"><span>&nbsp;cancerhotspots</span><b>${hot.n != null ? hot.n + " mutations" : ""}${hot.q != null ? ` · q=${hot.q.toExponential(1)}` : ""}</b></div>` : "")
       + (dom ? `<div class="row"><span>Domain</span><b>${dom.name}</b></div>` : "")
       + (isl ? `<div class="row"><span>AM island</span><b>${isl.s}–${isl.e} (${isl.m.toFixed(2)})</b></div>`
         + `<div class="row"><span>&nbsp;in island</span><b>${isl.plp || 0} P/LP · ${isl.blb || 0} B/LB</b></div>` : "")

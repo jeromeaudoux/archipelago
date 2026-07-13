@@ -22,6 +22,8 @@ CLINVAR_VCF = os.path.join(
     "107_2025-10", "clinvar.vep.vcf.gz",
 )
 MANE_SUMMARY = os.path.join(HOME, "Dev", "Data", "MANE.GRCh38.v1.3.summary.txt.gz")
+# cancerhotspots.org residue hotspots (hotspots_v3.xlsx, "Hotspot_Residues" sheet).
+CANCERHOTSPOTS_XLSX = os.path.join(HOME, "Downloads", "hotspots_v3.xlsx")
 CLINVAR_VERSION = "v107 · 2025-10"
 
 # --- Outputs --------------------------------------------------------------------

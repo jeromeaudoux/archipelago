@@ -17,7 +17,7 @@
   --ambiguous: #8999aa;   /* gray-600 */
   --pathogenic: #ef4178;  /* error */
   --reference: #415060;   /* gray-800 */
-  --domain: #58697c;      /* gray-700 */
+  --domain: #58697c; --hotspot: #7b5ea7;      /* gray-700 */
 
   /* AM diverging ramp: benign (blue) → neutral → pathogenic (red) */
   --am0: #0086e6; --am1: #b4dfff; --am2: #eef1f5; --am3: #f583a7; --am4: #b11949;
@@ -38,7 +38,7 @@
     --ink: #eaf1f8; --ink2: #b7c4d2; --muted: #7f93a6;
     --accent: #5cbbff; --accent-weak: #013559;
     --benign: #5cbbff; --ambiguous: #8999aa; --pathogenic: #f583a7;
-    --reference: #b7c4d2; --domain: #8999aa;
+    --reference: #b7c4d2; --domain: #8999aa; --hotspot: #a99ce0;
     --am0: #5cbbff; --am1: #1f6089; --am2: #33455a; --am3: #f583a7; --am4: #de1353;
     --cv-p: #f583a7; --cv-plp: #ec2463; --cv-lp: #b11949;
     --cv-b: #5cbbff; --cv-blb: #2593d8; --cv-lb: #1f6089;
@@ -54,7 +54,7 @@
   --ink: #eaf1f8; --ink2: #b7c4d2; --muted: #7f93a6;
   --accent: #5cbbff; --accent-weak: #013559;
   --benign: #5cbbff; --ambiguous: #8999aa; --pathogenic: #f583a7;
-  --reference: #b7c4d2; --domain: #8999aa;
+  --reference: #b7c4d2; --domain: #8999aa; --hotspot: #a99ce0;
   --am0: #5cbbff; --am1: #1f6089; --am2: #33455a; --am3: #f583a7; --am4: #de1353;
   --cv-p: #f583a7; --cv-plp: #ec2463; --cv-lp: #b11949;
   --cv-b: #5cbbff; --cv-blb: #2593d8; --cv-lb: #1f6089;
@@ -69,7 +69,7 @@
   --ink: #1c212c; --ink2: #494d56; --muted: #8999aa;
   --accent: #0496ff; --accent-weak: #d9efff;
   --benign: #0086e6; --ambiguous: #8999aa; --pathogenic: #ef4178;
-  --reference: #415060; --domain: #58697c;
+  --reference: #415060; --domain: #58697c; --hotspot: #7b5ea7;
   --am0: #0086e6; --am1: #b4dfff; --am2: #eef1f5; --am3: #f583a7; --am4: #b11949;
   --cv-p: #b11949; --cv-plp: #de1353; --cv-lp: #f583a7;
   --cv-b: #013559; --cv-blb: #0086e6; --cv-lb: #5cbbff;
@@ -179,6 +179,7 @@ button:focus-visible, input:focus-visible, .chip:focus-visible {
 .sw.dot { border-radius: 50%; width: 11px; height: 11px; }
 .sw.grad { width: 40px; background: linear-gradient(90deg, var(--am0), var(--am2), var(--am4)); }
 .sw.domain { background: var(--domain); }
+.sw.hotspot { background: var(--hotspot); transform: rotate(45deg); border-radius: 2px; }
 .sw.reference { background: var(--reference); }
 .sw.cvp { background: var(--cv-p); } .sw.cvplp { background: var(--cv-plp); } .sw.cvlp { background: var(--cv-lp); }
 .sw.cvb { background: var(--cv-b); } .sw.cvblb { background: var(--cv-blb); } .sw.cvlb { background: var(--cv-lb); }
