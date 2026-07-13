@@ -338,7 +338,46 @@ a.ghost { display: inline-flex; align-items: center; text-decoration: none; }
 .svgfig svg { width: 100%; max-width: 720px; height: auto; display: block; }
 .svgfig figcaption { font-size: 12px; color: var(--muted); margin-top: 6px; }
 
-/* PM1 grading */
+/* PM1 prediction page */
+.pm1 { max-width: 900px; margin: 8px auto 0; }
+.pm1 .eyebrow { color: var(--accent); text-align: left; }
+.pm1 h1 { font-size: clamp(24px, 3.4vw, 34px); font-weight: 700; letter-spacing: -0.02em; margin: 0 0 18px; color: var(--ink); }
+.pm1 h1 em { font-style: normal; color: var(--accent); }
+.pm1-var { font-size: 0.62em; color: var(--ink2); font-weight: 500; }
+.pm1-grid { display: flex; flex-wrap: wrap; gap: 16px; align-items: stretch; }
+.pm1-verdict { flex: 0 0 220px; border-radius: 14px; border: 1px solid var(--border); padding: 18px 20px; display: flex; flex-direction: column; justify-content: center; }
+.pm1-verdict-l { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.pm1-verdict-n { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; margin-top: 4px; line-height: 1.1; }
+.pm1-verdict-p { font-size: 13px; color: var(--ink2); margin-top: 4px; font-family: var(--font-mono); }
+.grade-str { background: color-mix(in srgb, var(--pathogenic) 14%, var(--panel)); border-color: var(--pathogenic); }
+.grade-str .pm1-verdict-n { color: var(--pathogenic); }
+.grade-mod { background: color-mix(in srgb, var(--isl-none) 18%, var(--panel)); border-color: var(--isl-none); }
+.grade-mod .pm1-verdict-n { color: #b5772a; }
+.grade-sup { background: var(--accent-weak); border-color: var(--accent); }
+.grade-sup .pm1-verdict-n { color: var(--accent); }
+.grade-none .pm1-verdict-n { color: var(--muted); }
+.pm1-facts { flex: 1 1 340px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 22px; align-content: center;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px 20px; }
+.fact { display: flex; flex-direction: column; gap: 1px; }
+.fact span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+.fact b { font-size: 15px; color: var(--ink); font-weight: 600; }
+.pm1-just { font-size: 16px; line-height: 1.55; color: var(--ink2); margin: 18px 0 10px; }
+.pm1-warn { font-size: 13px; color: #b5772a; background: color-mix(in srgb, var(--isl-none) 14%, var(--panel));
+  border: 1px solid var(--isl-none); border-radius: 9px; padding: 8px 12px; margin: 0 0 10px; }
+.pm1-warn.subtle { color: var(--muted); background: var(--surface); border-color: var(--border); }
+.pm1-fig { margin: 16px 0; }
+.pm1-fig canvas { display: block; max-width: 100%; }
+.pm1-fig figcaption { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.pm1-actions { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; margin-top: 14px; }
+.pm1-strengths { font-size: 12px; color: var(--muted); display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.pm1 .pill, .pm1-strengths .pill { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11.5px; font-weight: 700; color: #fff; }
+.pm1 .pill.sup, .pm1-strengths .pill.sup { background: var(--benign); }
+.pm1 .pill.mod, .pm1-strengths .pill.mod { background: var(--isl-none); color: #3a2c05; }
+.pm1 .pill.str, .pm1-strengths .pill.str { background: var(--pathogenic); }
+.pm1-caveat { font-size: 12px; color: var(--muted); margin-top: 12px; }
+.chip-variant { border-style: dashed; }
+
+/* PM1 grading table (Methods) */
 .grades { margin: 8px 0 6px; overflow-x: auto; }
 .grades-table { min-width: 420px; }
 .grades-table td:last-child, .grades-table th:last-child { text-align: left; }

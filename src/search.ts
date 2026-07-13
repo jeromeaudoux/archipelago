@@ -16,6 +16,8 @@ export function attachAutocomplete(
   function rank(q: string): GeneEntry[] {
     const idx = getIndex();
     if (!q) return [];
+    // Variant-like input (GENE:p.… / GENE:c.…) is handled on Enter, not autocompleted.
+    if (/[:.]/.test(q) || /\b[pc]\.\s*/i.test(q)) return [];
     const Q = upper(q);
     const starts: GeneEntry[] = [];
     const contains: GeneEntry[] = [];
@@ -65,8 +67,10 @@ export function attachAutocomplete(
     else if (e.key === "Enter") {
       e.preventDefault();
       const pick = matches[active];
+      // Pass the raw value (do NOT uppercase — it would break c./p. variant syntax);
+      // gene symbols are uppercased downstream.
       if (pick) { onSelect(pick.symbol); close(); }
-      else if (input.value.trim()) { onSelect(upper(input.value.trim())); close(); }
+      else if (input.value.trim()) { onSelect(input.value.trim()); close(); }
     } else if (e.key === "Escape") { close(); }
   });
 

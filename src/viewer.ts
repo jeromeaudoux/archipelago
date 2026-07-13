@@ -193,7 +193,7 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
         Islands are colored by ClinVar overlap (red = pathogenic-heavy, blue = benign-heavy,
         amber = none). ClinVar lollipops: P/LP up, B/LB down (size ∝ #records). Hover for details.</div>
     </div>
-    <p class="vfoot">AlphaMissense (DeepMind, CC BY-NC-SA 4.0) · ClinVar P/LP + B/LB missense on
+    <p class="vfoot">AlphaMissense (DeepMind, CC BY 4.0) · ClinVar P/LP + B/LB missense on
       <code>${b.refseq || "RefSeq"}</code> · UniProt domains · AM islands (score&gt;0.564, ≥35 aa).</p>
     <div class="tip" id="v-tip"></div>
     ${cvModalHTML(b)}`;
@@ -491,7 +491,7 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
     // footer credit
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
     ctx.fillStyle = muted; ctx.font = "10px ui-sans-serif,system-ui";
-    ctx.fillText("AlphaMissense (DeepMind, CC BY-NC-SA 4.0) · ClinVar · UniProt domains · am-islands-viewer",
+    ctx.fillText("AlphaMissense (DeepMind, CC BY 4.0) · ClinVar · UniProt domains · am-islands-viewer",
       PAD, H - 8);
 
     out.toBlob((blob) => {
