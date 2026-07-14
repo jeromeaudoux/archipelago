@@ -1,12 +1,16 @@
-"""Build the PM1 benchmark dataset: ClinGen-curated PM1 (eRepo) vs Archipelago
-island-PM1, per variant, classified TP/FP/FN.
+"""Build the PM1 benchmark dataset by replicating the SeqOne eRepo benchmark.
 
-Ground truth: a variant is PM1-positive if any "Applied Evidence Codes (Met)" token
-starts with PM1. Prediction: the residue falls in an AlphaMissense island (and the
-island is not benign-contradicted), matching the app's PM1 rule. Only missense
-variants that map onto an AlphaMissense isoform (ref aa concordant) are scored.
+Mirrors benchmark_ACMG/benchmark_acmg.py exactly:
+  - prediction = the engine's acmg_tags_v2 PM1 state (island-based, scored with
+    --am-islands) from erepo_variants_updated.json.gz,
+  - ground truth = PM1 (strength-independent) in the eRepo "Applied Evidence
+    Codes (Met)",
+  - matched by ClinVar Variation Id,
+  - TP/FP/FN over the matched set.
 
-Output: public/data/pm1_benchmark.json (TP/FP/FN rows + summary counts).
+This reproduces the headline PM1 numbers (the engine uses genomic island overlap,
+so there is no isoform mapping and no benign downgrade). Output:
+public/data/pm1_benchmark.json.
 
 Usage:  python3 build_pm1_benchmark.py
 """
@@ -19,90 +23,89 @@ import sys
 
 import config as C
 
+PVAR_RE = re.compile(r"\(p\.([A-Z][a-z]{2})(\d+)([A-Z][a-z]{2}|Ter|=)\)")
 AA3 = {
     "Ala": "A", "Arg": "R", "Asn": "N", "Asp": "D", "Cys": "C", "Gln": "Q", "Glu": "E",
     "Gly": "G", "His": "H", "Ile": "I", "Leu": "L", "Lys": "K", "Met": "M", "Phe": "F",
-    "Pro": "P", "Ser": "S", "Thr": "T", "Trp": "W", "Tyr": "Y", "Val": "V", "Ter": "*",
+    "Pro": "P", "Ser": "S", "Thr": "T", "Trp": "W", "Tyr": "Y", "Val": "V",
 }
-PVAR_RE = re.compile(r"\(p\.([A-Z][a-z]{2})(\d+)([A-Z][a-z]{2}|Ter|=)\)")
-
-_bundle_cache: dict = {}
 
 
-def load_gene(symbol):
-    if symbol in _bundle_cache:
-        return _bundle_cache[symbol]
-    path = os.path.join(C.GENES_DIR, symbol + ".json.gz")
-    b = None
-    if os.path.exists(path):
-        with gzip.open(path, "rt") as fh:
-            full = json.load(fh)
-        b = {"ref": full["ref"], "length": full["length"], "islands": full["islands"]}
-    _bundle_cache[symbol] = b
-    return b
+def parse_predictions(path):
+    """clinvar_id -> {'pred': bool, 'pstr': str} from the engine's PM1 tag."""
+    pred = {}
+    with gzip.open(path, "rt") as fh:
+        for line in fh:
+            if not line.strip():
+                continue
+            d = json.loads(line)
+            tags = d.get("link", {}).get("acmg_tags_v2", [])
+            pm1 = next((t for t in tags if t.get("code") in ("PM1", "vPM1")), None)
+            if pm1 is None:
+                continue
+            on = pm1.get("state") == "on"
+            pstr = (pm1.get("evidence_level") or "").title() if on else ""
+            cvids = d.get("element", {}).get("extdb", {}).get("clinvar", []) or []
+            if isinstance(cvids, (str, int)):
+                cvids = [cvids]
+            for cid in cvids:
+                pred[str(cid)] = {"pred": on, "pstr": pstr}
+    return pred
 
 
-def predict(b, pos):
-    """Return (pred_bool, strength_label, island[s,e] | None) mirroring pm1.ts."""
-    isl = next((i for i in b["islands"] if i["s"] <= pos <= i["e"]), None)
-    if not isl:
-        return False, "Not met", None
-    plp, blb = isl.get("plp", 0), isl.get("blb", 0)
-    span = [isl["s"], isl["e"]]
-    if blb > 0 and blb >= plp:
-        return False, "Not met (benign-heavy)", span
-    if plp >= 10 and blb == 0:
-        return True, "Strong", span
-    if plp >= 3 and blb == 0:
-        return True, "Moderate", span
-    return True, "Supporting", span
+def clean_variation(var):
+    """A short human label from the eRepo Variation string."""
+    m = re.search(r"\(([^)]+)\):(c\.[^ ]+)(?: \((p\.[^)]+)\))?", var)
+    if m:
+        return f"{m.group(2)}" + (f" ({m.group(3)})" if m.group(3) else "")
+    return var[:60]
 
 
 def main():
-    if not os.path.exists(C.EREPO_TSV):
-        print(f"eRepo not found: {C.EREPO_TSV}", file=sys.stderr); sys.exit(1)
+    for p in (C.EREPO_TSV, C.EREPO_SCORED_JSON):
+        if not os.path.exists(p):
+            print(f"missing: {p}", file=sys.stderr); sys.exit(1)
 
-    rows = []
-    counts = {"tp": 0, "fp": 0, "fn": 0, "tn": 0}
-    skipped_nogene = skipped_nopvar = refmismatch = 0
+    print(f"Parsing engine predictions {C.EREPO_SCORED_JSON}…", flush=True)
+    pred = parse_predictions(C.EREPO_SCORED_JSON)
+    print(f"  {len(pred)} ClinVar-id predictions", flush=True)
 
+    rows, counts = [], {"tp": 0, "fp": 0, "fn": 0, "tn": 0}
+    unmatched = 0
     with open(C.EREPO_TSV) as fh:
         for r in csv.DictReader(fh, delimiter="\t"):
-            gene = (r.get("HGNC Gene Symbol") or "").strip()
+            cid = (r.get("ClinVar Variation Id") or "").strip()
+            if not cid or cid not in pred:
+                unmatched += 1
+                continue
             met = r.get("Applied Evidence Codes (Met)", "")
-            truth = any(t.strip().startswith("PM1") for t in met.split(","))
-            truth_str = next((t.strip() for t in met.split(",") if t.strip().startswith("PM1")), "")
-
-            m = PVAR_RE.search(r.get("Variation", ""))
-            if not m:
-                skipped_nopvar += 1; continue
-            ref, alt = AA3.get(m.group(1)), (m.group(3) if m.group(3) in ("=", "Ter") else AA3.get(m.group(3)))
-            pos = int(m.group(2))
-            if not ref or alt in ("*", "=", None):   # missense only
-                skipped_nopvar += 1; continue
-
-            b = load_gene(gene)
-            if b is None:
-                skipped_nogene += 1; continue
-            if pos < 1 or pos > b["length"] or b["ref"][pos - 1] != ref:
-                refmismatch += 1; continue
-
-            pred, pred_str, span = predict(b, pos)
-            cat = ("tp" if truth and pred else "fp" if pred and not truth
-                   else "fn" if truth and not pred else "tn")
+            met_list = [t.strip() for t in met.split(",") if t.strip()]
+            truth = any(t.startswith("PM1") for t in met_list)
+            tstr = next((t for t in met_list if t.startswith("PM1")), "")
+            p = pred[cid]
+            cat = ("tp" if truth and p["pred"] else "fp" if p["pred"] and not truth
+                   else "fn" if truth and not p["pred"] else "tn")
             counts[cat] += 1
             if cat == "tn":
-                continue  # too many & uninformative; summarized only
+                continue
 
+            gene = (r.get("HGNC Gene Symbol") or "").strip()
+            variation = r.get("Variation", "")
+            m = PVAR_RE.search(variation)
+            vshort = f"{AA3.get(m.group(1), '?')}{m.group(2)}{AA3.get(m.group(3), m.group(3))}" if m else ""
             rows.append({
-                "g": gene, "v": f"{ref}{pos}{alt}", "p": pos,
-                "dis": (r.get("Disease") or "").strip()[:80],
+                "g": gene,
+                "v": vshort,                       # 1-letter p. (for the app PM1 link), may be ""
+                "hgvs": clean_variation(variation),
+                "dis": (r.get("Disease") or "").strip()[:90],
                 "panel": (r.get("Expert Panel") or "").strip(),
                 "link": (r.get("Evidence Repo Link") or "").strip(),
-                "clinvar": (r.get("ClinVar Variation Id") or "").strip(),
-                "truth": truth, "tstr": truth_str,
-                "pred": pred, "pstr": pred_str,
-                "isl": span, "cat": cat,
+                "clinvar": cid,
+                "assertion": (r.get("Assertion") or "").strip(),
+                "met": ", ".join(met_list),
+                "truth": truth, "tstr": tstr,
+                "pred": p["pred"], "pstr": p["pstr"],
+                "cat": cat,
             })
 
     tp, fp, fn = counts["tp"], counts["fp"], counts["fn"]
@@ -110,10 +113,9 @@ def main():
     rec = tp / (tp + fn) if tp + fn else 0
     f1 = 2 * prec * rec / (prec + rec) if prec + rec else 0
     summary = {**counts, "precision": round(prec, 4), "recall": round(rec, 4),
-               "f1": round(f1, 4), "n_rows": len(rows),
-               "skipped_no_gene": skipped_nogene, "skipped_non_missense": skipped_nopvar,
-               "ref_mismatch": refmismatch}
-    rows.sort(key=lambda x: (x["cat"], x["g"], x["p"]))
+               "f1": round(f1, 4), "matched": tp + fp + fn + counts["tn"],
+               "n_rows": len(rows)}
+    rows.sort(key=lambda x: (x["cat"], x["g"], x["hgvs"]))
     os.makedirs(C.DATA_DIR, exist_ok=True)
     with open(C.PM1_BENCHMARK_JSON, "w") as fh:
         json.dump({"summary": summary, "variants": rows}, fh, separators=(",", ":"))

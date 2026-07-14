@@ -418,6 +418,18 @@ a.ghost { display: inline-flex; align-items: center; text-decoration: none; }
 .rescat.fn { background: var(--isl-none); color: #3a2c05; }
 .bench-count { font-size: 12.5px; color: var(--muted); margin: 10px 2px; }
 .bench-caveat { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.5; }
+.btable tbody tr { cursor: pointer; }
+.btable .bg { font-weight: 600; color: var(--ink); }
+.btable .bv { color: var(--accent); }
+.bmodal { max-width: 540px; }
+.bmodal-cat { margin: 0 0 14px; }
+.bmodal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 22px; margin-bottom: 16px; }
+.bmodal-codes { margin-bottom: 18px; }
+.bmodal-codes > span { font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); }
+.codes { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.code { font-family: var(--font-mono); font-size: 11.5px; padding: 2px 7px; border-radius: 6px; background: var(--surface); border: 1px solid var(--border); color: var(--ink2); }
+.code.pm1 { background: var(--accent-weak); border-color: var(--accent); color: var(--accent); font-weight: 700; }
+.bmodal-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 
 /* PM1 grading table (Methods) */
 .grades { margin: 8px 0 6px; overflow-x: auto; }

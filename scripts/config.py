@@ -26,6 +26,8 @@ MANE_SUMMARY = os.path.join(HOME, "Dev", "Data", "MANE.GRCh38.v1.3.summary.txt.g
 CANCERHOTSPOTS_XLSX = os.path.join(HOME, "Downloads", "hotspots_v3.xlsx")
 # ClinGen Evidence Repository export (PM1 benchmark ground truth).
 EREPO_TSV = os.path.join(HOME, "Documents", "benchmark_ACMG", "data", "erepo-tabbed.tsv")
+# acmgscore output on the eRepo set, scored WITH --am-islands (PM1_AM_* tags).
+EREPO_SCORED_JSON = os.path.join(HOME, "Dev", "acmgscore-v2", "erepo_variants_updated.json.gz")
 CLINVAR_VERSION = "v107 · 2025-10"
 
 # --- Outputs --------------------------------------------------------------------
