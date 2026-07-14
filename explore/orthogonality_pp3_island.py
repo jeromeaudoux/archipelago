@@ -36,7 +36,9 @@ HOME = os.path.expanduser("~")
 DATA = os.path.join(HOME, "Dev", "acmgscore-v2", "clinvar_acmg_small_updated.json.gz")
 BED = os.path.join(HOME, "Dev", "acmgscore-v2", "data", "am_islands_hg38.bed.gz")
 CACHE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".orth_cache.pkl")
-FIG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "paper", "figures", "fig_orthogonality.png")
+FIG_BASE = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                         "..", "paper", "figures", "fig_orthogonality"))
+MIN_N = 10  # suppress decile points with fewer than this many variants in a line
 PATHO = {"Pathogenic", "Likely_pathogenic", "Pathogenic/Likely_pathogenic"}
 BENIGN = {"Benign", "Likely_benign", "Benign/Likely_benign"}
 
@@ -156,8 +158,24 @@ def main():
           f"| in_island={int(isl.sum())} out={int(len(isl)-isl.sum())}")
 
     rng = np.random.default_rng(20240714)
-    fig, axes = plt.subplots(1, 3, figsize=(13.5, 4.2))
-    for ax, (name, x) in zip(axes, preds.items()):
+    IN, OUT, INK, MUT = "#b11949", "#0086e6", "#1c212c", "#8999aa"
+    plt.rcParams.update({
+        "font.family": "DejaVu Sans", "font.size": 9, "axes.titlesize": 10.5,
+        "axes.labelsize": 9.5, "axes.spines.top": False, "axes.spines.right": False,
+        "axes.linewidth": 0.7, "axes.edgecolor": "#3a4652",
+        "xtick.labelsize": 8.5, "ytick.labelsize": 8.5, "xtick.color": "#3a4652",
+        "ytick.color": "#3a4652", "legend.fontsize": 8.5, "svg.fonttype": "none",
+    })
+
+    def fmt_p(p):
+        if p >= 1e-3:
+            return f"p = {p:.3f}"
+        e = int(np.floor(np.log10(p))); mant = p / 10 ** e
+        sup = str(e).translate(str.maketrans("-0123456789", "⁻⁰¹²³⁴⁵⁶⁷⁸⁹"))
+        return f"p = {mant:.0f}×10{sup}"
+
+    fig, axes = plt.subplots(1, 3, figsize=(11.0, 3.7), sharey=True)
+    for pi, (ax, (name, x)) in enumerate(zip(axes, preds.items())):
         m = ~np.isnan(x)
         xx, yy, ii, gg = x[m], lab[m], isl[m], gene[m]
         dec, edges = deciles(xx)
@@ -167,14 +185,16 @@ def main():
             cx.append(np.median(xx[s]) if s.any() else np.nan)
             for grp in (1, 0):
                 sg = s & (ii == grp); n = int(sg.sum()); kk = int(yy[sg].sum())
-                lines[grp][0].append(kk / n if n else np.nan)
-                lines[grp][1].append(wilson(kk, n))
+                lines[grp][0].append(kk / n if n >= MIN_N else np.nan)
+                lines[grp][1].append(wilson(kk, n) if n >= MIN_N else (np.nan, np.nan))
         cx = np.array(cx)
-        for grp, col, ls, lbl in ((1, "#b11949", "-", "in island"), (0, "#0086e6", "--", "outside island")):
+        ax.grid(axis="y", color="#eef1f5", lw=0.8, zorder=0)
+        for grp, col, ls, lbl in ((0, OUT, "--", "outside island"), (1, IN, "-", "in island")):
             p = np.array(lines[grp][0], float); ok = ~np.isnan(p)
             lo = np.array([a for a, _ in lines[grp][1]]); hi = np.array([b for _, b in lines[grp][1]])
-            ax.plot(cx[ok], p[ok], ls, color=col, lw=2, marker="o", ms=4, label=lbl)
-            ax.fill_between(cx[ok], lo[ok], hi[ok], color=col, alpha=0.13, lw=0)
+            ax.fill_between(cx[ok], lo[ok], hi[ok], color=col, alpha=0.12, lw=0, zorder=1)
+            ax.plot(cx[ok], p[ok], ls, color=col, lw=1.8, marker="o", ms=4.5, mec="white",
+                    mew=0.6, label=lbl, zorder=3)
         orr = cmh_or(yy, ii, dec)
         ug = np.unique(gg)
         boots = [cmh_or(yy[idx], ii[idx], dec[idx]) for idx in
@@ -187,20 +207,30 @@ def main():
         se = cluster_robust_se(X, yy, p, gg)[2]
         beta, pval = b[2], 2 * stats.norm.sf(abs(b[2] / se))
         vif = 1 / (1 - np.corrcoef(z, ii)[0, 1] ** 2)
-        ax.set_title(name, fontsize=11, fontweight="bold")
-        ax.set_xlabel(name); ax.set_ylim(0, 1.02)
-        ax.text(0.03, 0.97, f"CMH OR={orr:.1f} [{lo_ci:.1f}–{hi_ci:.1f}]\nlogit β(in-island)={beta:.2f}"
-                f"\np={pval:.1e} · VIF={vif:.2f}", transform=ax.transAxes, va="top", fontsize=8.5,
-                bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="#dbe0e6"))
+        ax.set_title(name, fontweight="bold", color=INK, pad=8)
+        ax.set_xlabel(name)
+        ax.set_ylim(-0.02, 1.04)
+        ax.text(-0.04, 1.10, "ABC"[pi], transform=ax.transAxes, fontsize=13,
+                fontweight="bold", va="top", ha="right", color=INK)
+        sig = pval < 0.05
+        ax.text(0.04, 0.96,
+                f"OR = {orr:.1f}  ({lo_ci:.1f}–{hi_ci:.1f})\n{fmt_p(pval)}"
+                + ("" if sig else "\n(n.s.)"),
+                transform=ax.transAxes, va="top", fontsize=8.5,
+                color=IN if sig else MUT,
+                bbox=dict(boxstyle="round,pad=0.35", fc="white",
+                          ec=IN if sig else "#dbe0e6", lw=0.8))
         print(f"  {name:26} CMH_OR={orr:.2f} [{lo_ci:.2f}-{hi_ci:.2f}]  beta={beta:.3f} p={pval:.2e} "
               f"VIF={vif:.2f} N={int(m.sum())}")
-    axes[0].set_ylabel("P(pathogenic) within predictor decile")
-    axes[0].legend(loc="lower right", fontsize=9, frameon=False)
-    fig.suptitle("At a fixed per-variant predictor score, island membership still raises P(pathogenic)",
-                 fontsize=12.5, fontweight="bold")
-    fig.tight_layout(rect=[0, 0, 1, 0.96])
-    fig.savefig(os.path.normpath(FIG), dpi=150, bbox_inches="tight")
-    print("saved", os.path.normpath(FIG))
+    axes[0].set_ylabel("P(pathogenic), within predictor decile")
+    axes[0].legend(loc="lower right", frameon=False, handlelength=1.8)
+    fig.suptitle("At a fixed per-variant score, island membership still raises pathogenicity odds",
+                 fontsize=11.5, fontweight="bold", color=INK, y=1.02)
+    fig.tight_layout()
+    for ext in ("svg", "png"):
+        fig.savefig(f"{FIG_BASE}.{ext}", dpi=300, bbox_inches="tight",
+                    facecolor="white", transparent=False)
+    print("saved", FIG_BASE + ".svg / .png")
 
 
 if __name__ == "__main__":

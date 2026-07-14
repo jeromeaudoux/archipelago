@@ -59,6 +59,24 @@ the leave-one-out collinearity trap.
   out-of-island at fixed score) is not circular with respect to islands, since islands are
   AlphaMissense-derived and independent of ClinVar; the marginal base rates are not the claim.
 
+## Why we do NOT add an "in-island × ClinVar overlap" stratum here
+
+Tempting, but circular for *this* test: the outcome is ClinVar clinical significance, so a
+covariate built from nearby ClinVar pathogenic variants would use ClinVar to predict ClinVar,
+inflating the OR and re-importing the exact circularity islands were designed to avoid. Fig. 5
+must stay a clean AlphaMissense-only-vs-PP3 comparison. "In-island **+ ClinVar corroboration**"
+belongs to the *graded-PM1 calibration* (§4 / C3), and even there it is only defensible with
+**leave-one-out ClinVar** (exclude the focal variant's own ClinVar status from the island's
+density) and ideally a non-ClinVar truth label (e.g. MAVE). That is a separate analysis, not
+part of the orthogonality claim.
+
+## Output
+
+`paper/figures/fig_orthogonality.svg` (vector, editable text) and `.png` (300 dpi). Caption
+note: VIF ≈ 1.1 for all three conditionings (binary membership ≠ `island_mean_score`), so the
+regression is stable and the AlphaMissense null is not a collinearity artifact; decile points
+with < 10 variants in a line are suppressed.
+
 ## Paper use
 
 Fills Results §3.4 (orthogonality) and answers open item C2. Headline for the Discussion:
