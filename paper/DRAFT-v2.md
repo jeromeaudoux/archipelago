@@ -1,9 +1,10 @@
 # AlphaMissense Islands: a genome-wide resource of regional missense hotspots for non-circular, reproducible ACMG PM1
 
 *Advanced working draft — SeqOne / Archipelago. Live tool:
-[archipelago2.vercel.app](https://archipelago2.vercel.app). Clean shareable Google Doc (v3):
-[docs.google.com/…/AlphaMissense-Islands-v3](https://docs.google.com/document/d/19DiYgIMghh46VZU00NtqAzZ4CqesGQnYrXIEYFT0pPQ/edit)
-(the commented v2 doc is kept for reference).
+[archipelago2.vercel.app](https://archipelago2.vercel.app). Clean shareable Google Doc (v3.1,
+current):
+[docs.google.com/…/AlphaMissense-Islands-v3.1](https://docs.google.com/document/d/1TzrdFdHZKZZoO1gZJwKs3KOO9edbpgb_c8IAQ6Q2I0c/edit)
+(supersedes the earlier v3; the commented v2 doc is kept for reference).
 Author list TBD (J. Audoux, J. B. [surname], Thibaut Benquey, et al.). Citation keys `[CITE:key]` resolve to
 the Reference list; `[verify]` marks IDs to confirm at submission. Figures reference
 `paper/figures/`. `DRAFT.md` is the previous version.*
