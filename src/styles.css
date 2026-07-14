@@ -378,6 +378,47 @@ a.ghost { display: inline-flex; align-items: center; text-decoration: none; }
 .pm1-caveat { font-size: 12px; color: var(--muted); margin-top: 12px; }
 .chip-variant { border-style: dashed; }
 
+/* PM1 benchmark explorer */
+.about .topbar .brand.mini { margin-right: auto; }
+.bench-page { max-width: 1020px; margin: 4px auto 0; }
+.bench-page .eyebrow { color: var(--accent); text-align: left; }
+.bench-page h1 { font-size: clamp(24px, 3.4vw, 34px); font-weight: 700; letter-spacing: -0.02em; margin: 0 0 10px; color: var(--ink); }
+.bench-page h1 em { font-style: normal; color: var(--accent); }
+.bench-lead { color: var(--ink2); font-size: 15px; margin: 0 0 18px; max-width: 70ch; }
+.bench-tiles { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+.btile { flex: 1 1 120px; min-width: 120px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px 14px; text-align: left; font: inherit; cursor: pointer; }
+.btile.stat { cursor: default; }
+.btile:not(.stat):hover { border-color: var(--accent); }
+.bt-n { display: block; font-size: 24px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+.bt-l { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; margin-top: 3px; }
+.bench-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.bfilters { display: flex; gap: 6px; flex-wrap: wrap; }
+.bfilter { font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 8px; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--border); color: var(--ink2); }
+.bfilter.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.bsearch { flex: 1 1 240px; max-width: 320px; font: inherit; font-size: 14px; padding: 8px 12px;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--panel); color: var(--ink); outline: none; }
+.bsearch:focus { border-color: var(--accent); }
+.btable-wrap { border: 1px solid var(--border); border-radius: 10px; overflow: auto; max-height: 70vh; background: var(--panel); }
+.btable { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.btable thead th { position: sticky; top: 0; background: var(--panel); text-align: left; padding: 9px 12px;
+  border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); z-index: 1; }
+.btable td { padding: 8px 12px; border-bottom: 1px solid var(--grid); color: var(--ink2); vertical-align: top; }
+.btable tr:hover td { background: var(--surface); }
+.bdis { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.blink { color: var(--accent); text-decoration: none; }
+.blink:hover { text-decoration: underline; }
+.pm1badge { display: inline-block; padding: 1px 8px; border-radius: 20px; font-size: 11.5px; font-family: var(--font-mono); }
+.pm1badge.on { background: var(--accent-weak); color: var(--accent); }
+.pm1badge.off { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
+.rescat { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11.5px; font-weight: 600; color: #fff; }
+.rescat.tp { background: #40d3b2; color: #05372c; }
+.rescat.fp { background: var(--pathogenic); }
+.rescat.fn { background: var(--isl-none); color: #3a2c05; }
+.bench-count { font-size: 12.5px; color: var(--muted); margin: 10px 2px; }
+.bench-caveat { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.5; }
+
 /* PM1 grading table (Methods) */
 .grades { margin: 8px 0 6px; overflow-x: auto; }
 .grades-table { min-width: 420px; }

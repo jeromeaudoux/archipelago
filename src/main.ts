@@ -3,6 +3,7 @@ import { attachAutocomplete, type GeneEntry } from "./search";
 import { renderViewer, type Bundle } from "./viewer";
 import { methodsHTML } from "./methods";
 import { parseVariant, looksLikeVariant, renderPM1 } from "./pm1";
+import { renderBenchmark } from "./benchmark";
 
 const EXAMPLES = ["KIF1A", "TP53", "BRCA1", "SCN2A", "PTEN", "SCN1A"];
 const EXAMPLE_VARIANTS = ["KIF1A:p.Arg350Gln", "KIF1A:c.760G>A"];
@@ -79,6 +80,23 @@ function showMethods(push = true): void {
   window.scrollTo(0, 0);
 }
 
+let benchData: Parameters<typeof renderBenchmark>[1] | null = null;
+async function showBenchmark(push = true): Promise<void> {
+  if (push) history.pushState({ page: "benchmark" }, "", "?page=benchmark");
+  show("about");
+  document.title = "PM1 benchmark — Archipelago";
+  window.scrollTo(0, 0);
+  const root = $("about-root");
+  root.innerHTML = `<div class="state"><div class="spinner"></div><p>Loading PM1 benchmark…</p></div>`;
+  try {
+    if (!benchData) benchData = await (await fetch("/data/pm1_benchmark.json")).json();
+    renderBenchmark(root, benchData!);
+  } catch {
+    root.innerHTML = `<div class="state"><h2>Benchmark data not found</h2>
+      <p>Run <span class="mono">python3 scripts/build_pm1_benchmark.py</span>.</p></div>`;
+  }
+}
+
 async function showGene(symbol: string, push = true): Promise<void> {
   symbol = symbol.toUpperCase().trim();
   if (!symbol) return;
@@ -149,6 +167,7 @@ function route(): void {
   const page = params.get("page");
   if (pm1) showPM1(pm1, false);
   else if (page === "methods") showMethods(false);
+  else if (page === "benchmark") showBenchmark(false);
   else if (gene) showGene(gene, false);
   else showLanding();
 }
@@ -176,8 +195,11 @@ function init(): void {
     if (vchip) { showPM1(vchip.dataset.variant!); return; }
     const glink = t.closest<HTMLElement>("[data-gene-link]");
     if (glink) { e.preventDefault(); showGene(glink.dataset.geneLink!); return; }
+    const plink = t.closest<HTMLElement>("[data-pm1-link]");
+    if (plink) { e.preventDefault(); showPM1(plink.dataset.pm1Link!); return; }
     if (t.closest("[data-home]")) { e.preventDefault(); showLanding(); history.pushState({}, "", "/"); return; }
     if (t.closest("[data-methods]")) { e.preventDefault(); showMethods(); return; }
+    if (t.closest("[data-benchmark]")) { e.preventDefault(); showBenchmark(); return; }
     if (t.closest(".theme-toggle")) { toggleTheme(); return; }
   });
 

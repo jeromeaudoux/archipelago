@@ -24,6 +24,8 @@ CLINVAR_VCF = os.path.join(
 MANE_SUMMARY = os.path.join(HOME, "Dev", "Data", "MANE.GRCh38.v1.3.summary.txt.gz")
 # cancerhotspots.org residue hotspots (hotspots_v3.xlsx, "Hotspot_Residues" sheet).
 CANCERHOTSPOTS_XLSX = os.path.join(HOME, "Downloads", "hotspots_v3.xlsx")
+# ClinGen Evidence Repository export (PM1 benchmark ground truth).
+EREPO_TSV = os.path.join(HOME, "Documents", "benchmark_ACMG", "data", "erepo-tabbed.tsv")
 CLINVAR_VERSION = "v107 · 2025-10"
 
 # --- Outputs --------------------------------------------------------------------
@@ -31,6 +33,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(REPO, "public", "data")
 GENES_DIR = os.path.join(DATA_DIR, "genes")
 INDEX_JSON = os.path.join(DATA_DIR, "index.json")
+PM1_BENCHMARK_JSON = os.path.join(DATA_DIR, "pm1_benchmark.json")
 
 # --- Model constants ------------------------------------------------------------
 # Heatmap row order: charged+ / charged- / polar / special / hydrophobic
