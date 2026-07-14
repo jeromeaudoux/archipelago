@@ -139,6 +139,11 @@ match `[CITE:key]` in `DRAFT-v2.md`.*
 - **[walsh2018]** Walsh MF, et al. Integrating somatic variant data for germline
   classification in cancer-predisposition genes. *Hum Mutat* 2018;39(11):1542–1552.
   doi:10.1002/humu.23640 · PMID 30311369. *(Origin of cancerhotspots-informed germline PM1.)*
+- **[rasopathy2025]** ClinGen RASopathy VCEP. Updated ACMG/AMP specifications for variant
+  interpretation and gene curations from the ClinGen RASopathy expert panels. *Genet Med
+  Open* 2025 (PMC12151217). **[verify DOI/PMID]** *(Evidence the field is disambiguating PM1:
+  recommends reserving PM1 for well-established functional domains and using PM5_Strong for
+  mutational hot-spots — directly relevant to how the revised guidelines may frame PM1.)*
 - **[fayer2021]** Fayer S, et al. Systematic integration of multiplexed functional data
   (BRCA1/TP53/PTEN). *Am J Hum Genet* 2021;108(12):2248–2258.
   doi:10.1016/j.ajhg.2021.11.001 · PMID **[verify]**. *(MAVE route to regional intolerance;

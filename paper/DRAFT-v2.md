@@ -406,6 +406,33 @@ variants — even at the same codon and within a single VCEP with refined gene-s
 residue-level noise, which both caps achievable recall and further motivates a
 reproducible, criterion-independent island definition.
 
+**An under-specified criterion — and a safe default.** PM1 is arguably the vaguest ACMG/AMP
+criterion: its "mutational hot spot *and/or* critical and well-established functional domain"
+wording admits no algorithm, and even ClinGen expert panels working from refined
+gene-specific rules apply it inconsistently to near-identical variants (§3.5). Against that
+backdrop our contribution is deliberately modest and safe: a **reproducible, high-precision
+(0.70) regional signal** that behaves identically for every substitution at a codon and for
+every gene. Crucially, because islands are database-independent they are defined on the
+**~6,150 genes (33 % of the proteome) that carry an island but mostly have no VCEP and
+little ClinVar** (74 % of islands overlap no ClinVar variant, §3.1) — precisely the long
+tail where no PM1 rule exists today. There, islands can justify PM1 at **Supporting** by
+default (the graded framework, §4), extending a consistent hot-spot signal far beyond the
+few dozen expert-curated genes without over-calling.
+
+**Toward the revised ("v4") guidelines.** A joint ACMG/AMP/ClinGen working group is revising
+the 2015 framework toward a **quantitative, points-based and calibrated** model (building on
+the Bayesian points system and the PP3/BP4 local-PPV calibration).
+[CITE:tavtigian2018][CITE:tavtigian2020][CITE:pejaver2022] How PM1 will be framed is
+unsettled — and the field is visibly grappling with its vagueness: the ClinGen RASopathy
+panel, for example, now recommends reserving **PM1 for well-established functional domains**
+and moving *hot-spot* evidence to **PM5_Strong**. [CITE:rasopathy2025] AlphaMissense islands
+are agnostic to that split: whether the revised guideline keeps PM1 as a domain/hotspot
+criterion or partitions it, a reproducible regional intolerance signal is a natural input,
+and — because it is continuous — it can be **OddsPath-calibrated** to a criterion and
+strength once a revised specification exists, rather than remaining a heuristic. We position
+islands as a calibration-ready, criterion-independent substrate for whichever PM1 (or
+PM1/PM5) definition the revision adopts.
+
 **Limitations & risks.** PP3/PM1 double-counting (§C2), evidence-strength calibration
 (§C3), the benchmark ground-truth definition, parameter robustness (§H1), isoform/coverage
 handling, and data licensing.
@@ -510,6 +537,10 @@ and prior-art/novelty verdict in `REFERENCES.md`.*
 41. **[pvs1]** Abou Tayoun AN, et al.; ClinGen SVI. Recommendations for interpreting the
     loss-of-function PVS1 ACMG/AMP criterion. *Hum Mutat* 2018;39(11):1517–1524.
     doi:10.1002/humu.23626 · PMID 30192042.
+42. **[rasopathy2025]** ClinGen RASopathy VCEP. Updated ACMG/AMP specifications for variant
+    interpretation and gene curations from the ClinGen RASopathy expert panels. *Genet Med
+    Open* 2025. doi:10.1016/j.gimo.2025.… **[verify]** *(recommends PM1 for well-established
+    functional domains, PM5_Strong for hot-spots).*
 
 ## Author contributions
 
