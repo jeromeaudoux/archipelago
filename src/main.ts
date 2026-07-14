@@ -4,6 +4,8 @@ import { renderViewer, type Bundle } from "./viewer";
 import { methodsHTML } from "./methods";
 import { parseVariant, looksLikeVariant, renderPM1 } from "./pm1";
 import { renderBenchmark } from "./benchmark";
+import { downloadsHTML } from "./downloads";
+import { renderFeedback } from "./feedback";
 
 const EXAMPLES = ["KIF1A", "TP53", "BRCA1", "SCN2A", "PTEN", "SCN1A"];
 const EXAMPLE_VARIANTS = ["KIF1A:p.Arg350Gln", "KIF1A:c.760G>A"];
@@ -77,6 +79,22 @@ function showMethods(push = true): void {
   $("about-root").innerHTML = methodsHTML();
   show("about");
   document.title = "Methods — Archipelago";
+  window.scrollTo(0, 0);
+}
+
+function showDownloads(push = true): void {
+  if (push) history.pushState({ page: "downloads" }, "", "?page=downloads");
+  $("about-root").innerHTML = downloadsHTML();
+  show("about");
+  document.title = "Downloads — Archipelago";
+  window.scrollTo(0, 0);
+}
+
+function showFeedback(push = true): void {
+  if (push) history.pushState({ page: "feedback" }, "", "?page=feedback");
+  renderFeedback($("about-root"));
+  show("about");
+  document.title = "Feedback — Archipelago";
   window.scrollTo(0, 0);
 }
 
@@ -168,6 +186,8 @@ function route(): void {
   if (pm1) showPM1(pm1, false);
   else if (page === "methods") showMethods(false);
   else if (page === "benchmark") showBenchmark(false);
+  else if (page === "downloads") showDownloads(false);
+  else if (page === "feedback") showFeedback(false);
   else if (gene) showGene(gene, false);
   else showLanding();
 }
@@ -200,6 +220,8 @@ function init(): void {
     if (t.closest("[data-home]")) { e.preventDefault(); showLanding(); history.pushState({}, "", "/"); return; }
     if (t.closest("[data-methods]")) { e.preventDefault(); showMethods(); return; }
     if (t.closest("[data-benchmark]")) { e.preventDefault(); showBenchmark(); return; }
+    if (t.closest("[data-downloads]")) { e.preventDefault(); showDownloads(); return; }
+    if (t.closest("[data-feedback]")) { e.preventDefault(); showFeedback(); return; }
     if (t.closest(".theme-toggle")) { toggleTheme(); return; }
   });
 
