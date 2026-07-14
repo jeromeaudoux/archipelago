@@ -631,7 +631,7 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
   scroll.addEventListener("mousemove", onMove);
   scroll.addEventListener("mouseup", endDrag);
   scroll.addEventListener("mouseleave", (e) => { if (dragX !== null) endDrag(e); else onLeave(); });
-  function fit(): void { colW = Math.max(0.35, (scroll.clientWidth - 2) / N); buildGutter(); drawAll(); }
+  function fit(): void { colW = Math.max(0.35, (scroll.clientWidth - 2) / N); buildGutter(); drawAll(); scroll.scrollLeft = 0; }
   $("v-fit").addEventListener("click", fit);
   $("v-png").addEventListener("click", exportPNG);
   ($("v-z") as HTMLInputElement).addEventListener("input", (e) => {
