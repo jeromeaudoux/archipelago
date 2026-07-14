@@ -15,6 +15,8 @@ export interface Bundle {
   hotspots?: { p: number; r: string; q?: number; n?: number; onc: number }[];
   /** gnomAD regional missense constraint: observed/expected per sub-region. */
   rmc?: { s: number; e: number; oe: number; obs?: number; exp?: number; p?: number; whole?: number }[];
+  /** exon-start residues (1-based) for multi-exon transcripts. */
+  exons?: number[];
 }
 
 const ICON: Record<string, string> = {
@@ -245,7 +247,7 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
   const plotX = (e: MouseEvent) => e.clientX - scroll.getBoundingClientRect().left + scroll.scrollLeft;
 
   const LANES = [
-    { id: "v-axt", h: AXIS, label: "" },
+    { id: "v-axt", h: AXIS, label: b.exons && b.exons.length ? "Exons" : "" },
     { id: "v-dom", h: DOM, label: "Domains" },
     { id: "v-isl", h: ISL, label: "AM islands" },
     ...(hasRmc ? [{ id: "v-rmc", h: RMC, label: "Missense o/e" }] : []),
@@ -425,15 +427,36 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
   function drawAxis(id: string, top: boolean): void {
     const ctx = ctxFor(id, AXIS);
     ctx.fillStyle = css("--muted"); ctx.strokeStyle = css("--border");
-    ctx.font = "10px ui-monospace,monospace"; ctx.textBaseline = top ? "top" : "bottom"; ctx.textAlign = "center";
+    ctx.textAlign = "center";
+    const baseline = top ? AXIS - 1 : 1;
+    ctx.beginPath(); ctx.moveTo(0, baseline + 0.5); ctx.lineTo(contentW(), baseline + 0.5); ctx.stroke();
+
+    if (top) {
+      if (b.exons && b.exons.length) {
+        const ex = b.exons;
+        ctx.strokeStyle = css("--muted"); ctx.globalAlpha = 0.5; ctx.lineWidth = 1;
+        for (const st of ex) {
+          const x = X(st);
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, AXIS); ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = css("--muted"); ctx.font = "9px ui-sans-serif,system-ui";
+        ctx.textBaseline = "middle";
+        for (let k = 0; k < ex.length; k++) {
+          const s = ex[k], e = k + 1 < ex.length ? ex[k + 1] : N + 1;
+          if ((e - s) * colW > 16) ctx.fillText(String(k + 1), (X(s) + X(e)) / 2, AXIS / 2);
+        }
+      }
+      return;
+    }
+
+    ctx.font = "10px ui-monospace,monospace"; ctx.textBaseline = "bottom";
     let step = Math.max(1, Math.round(90 / colW));
     for (const s of [1, 2, 5, 10, 25, 50, 100, 200, 250, 500, 1000]) { if (s >= step) { step = s; break; } }
-    const y = top ? AXIS - 1 : 1, ty = top ? 2 : AXIS - 2;
-    ctx.beginPath(); ctx.moveTo(0, y + 0.5); ctx.lineTo(contentW(), y + 0.5); ctx.stroke();
     for (let p = step; p <= N; p += step) {
       const x = X(p) + colW / 2;
-      ctx.beginPath(); ctx.moveTo(x, top ? AXIS - 5 : 0); ctx.lineTo(x, top ? AXIS : 5); ctx.stroke();
-      ctx.fillText(String(p), x, ty);
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 5); ctx.stroke();
+      ctx.fillText(String(p), x, AXIS - 2);
     }
   }
 

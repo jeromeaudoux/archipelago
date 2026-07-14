@@ -28,6 +28,9 @@ def main():
         run("build_uniprot_map.py", [])
     run("build_bundles.py", extra)
     run("add_clinvar.py", extra)
+    run("build_exons.py", [])
+    run("add_hotspots.py", extra)
+    run("add_rmc.py", extra)
     run("build_index.py", [])
 
 
