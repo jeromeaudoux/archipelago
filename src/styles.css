@@ -395,7 +395,7 @@ a.ghost { display: inline-flex; align-items: center; text-decoration: none; }
 
 /* PM1 benchmark explorer */
 .about .topbar .brand.mini { margin-right: auto; }
-.bench-page { max-width: 1020px; margin: 4px auto 0; }
+.bench-page { max-width: 1500px; margin: 4px auto 0; }
 .bench-page .eyebrow { color: var(--accent); text-align: left; }
 .bench-page h1 { font-size: clamp(24px, 3.4vw, 34px); font-weight: 700; letter-spacing: -0.02em; margin: 0 0 10px; color: var(--ink); }
 .bench-page h1 em { font-style: normal; color: var(--accent); }
@@ -413,42 +413,43 @@ a.ghost { display: inline-flex; align-items: center; text-decoration: none; }
 .dbreak-sum .muted { font-weight: 400; color: var(--muted); }
 .dbreak-sum::before { content: "▸"; display: inline-block; margin-right: 8px; color: var(--muted); transition: transform .15s; }
 .dbreak[open] .dbreak-sum::before { transform: rotate(90deg); }
-.dcols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px; }
-@media (max-width: 720px) { .dcols { grid-template-columns: 1fr; } }
-.dcol-h { font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); margin: 0 0 8px; font-weight: 600; border-left: 3px solid var(--border); padding-left: 8px; }
+.dcols { display: grid; grid-template-columns: 1fr 1fr minmax(230px, 0.82fr); gap: 10px 22px; align-items: start; }
+@media (max-width: 1000px) { .dcols { grid-template-columns: 1fr 1fr; } .recal { grid-column: 1 / -1; } }
+@media (max-width: 620px) { .dcols { grid-template-columns: 1fr; } .recal { grid-column: auto; } }
+.dcol-h { font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); margin: 0 0 6px; font-weight: 600; border-left: 3px solid var(--border); padding-left: 8px; }
 .dcol-h.fp { border-left-color: var(--pathogenic); }
 .dcol-h.fn { border-left-color: var(--isl-none); }
-.dcat { display: block; width: 100%; text-align: left; font: inherit; background: transparent; border: 1px solid transparent; border-radius: 8px; padding: 7px 9px; cursor: pointer; margin-bottom: 3px; }
+.dcat { display: block; width: 100%; text-align: left; font: inherit; background: transparent; border: 1px solid transparent; border-radius: 8px; padding: 6px 9px; cursor: pointer; margin-bottom: 2px; }
 .dcat:hover { background: var(--panel); border-color: var(--border); }
 .dcat.on { background: var(--panel); border-color: var(--accent); }
 .dcat-top { display: flex; align-items: baseline; gap: 8px; }
-.dcat-n { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 13px; border-radius: 6px; padding: 1px 6px; min-width: 18px; text-align: center; }
+.dcat-n { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 12.5px; border-radius: 6px; padding: 0 6px; min-width: 18px; text-align: center; }
 .dcat-n.fp { background: var(--pathogenic); color: #fff; }
 .dcat-n.fn { background: var(--isl-none); color: #3a2c05; }
-.dcat-l { font-weight: 600; color: var(--ink); font-size: 13.5px; }
-.dcat-pct { margin-left: auto; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.dcat-track { display: block; height: 4px; border-radius: 3px; background: var(--grid); margin: 6px 0 5px; overflow: hidden; }
+.dcat-l { font-weight: 600; color: var(--ink); font-size: 13px; }
+.dcat-pct { margin-left: auto; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.dcat-track { display: block; height: 3px; border-radius: 3px; background: var(--grid); margin: 4px 0 4px; overflow: hidden; }
 .dcat-fill { display: block; height: 100%; border-radius: 3px; }
 .dcat-fill.fp { background: var(--pathogenic); }
 .dcat-fill.fn { background: var(--isl-none); }
-.dcat-blurb { display: block; font-size: 12px; color: var(--ink2); line-height: 1.45; }
-.dcat-note { font-size: 12px; color: var(--muted); margin: 12px 0 0; }
+.dcat-blurb { display: block; font-size: 11.5px; color: var(--ink2); line-height: 1.4; }
+.dcat-note { font-size: 12px; color: var(--muted); margin: 10px 0 0; }
 .dpill { display: inline-block; padding: 2px 8px; border-radius: 7px; font-size: 11px; font-weight: 600; white-space: nowrap; }
 .dpill.fp { background: var(--pathogenic); color: #fff; }
 .dpill.fn { background: var(--isl-none); color: #3a2c05; }
 .bmodal-dcat { display: flex; align-items: baseline; gap: 10px; padding: 12px 0 2px; }
 .bmodal-dblurb { font-size: 12.5px; color: var(--ink2); line-height: 1.5; }
-.recal { margin-top: 16px; padding: 14px 16px; border: 1px dashed var(--border); border-radius: 10px; background: var(--panel); }
-.recal-head { margin: 0 0 12px; font-size: 13px; color: var(--ink); line-height: 1.5; }
-.recal-head .muted { font-weight: 400; color: var(--muted); }
-.recal-metrics { display: flex; flex-wrap: wrap; gap: 28px; }
-.recal-m { display: flex; flex-direction: column; gap: 3px; }
-.recal-l { font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
-.recal-v { display: flex; align-items: baseline; gap: 9px; font-variant-numeric: tabular-nums; }
-.recal-b { font-size: 15px; color: var(--muted); }
+.recal { padding: 10px 14px 12px; border: 1px dashed var(--border); border-radius: 10px; background: var(--panel); }
+.recal-h { border-left-color: var(--accent); margin-bottom: 6px; }
+.recal-lead { margin: 0 0 10px; font-size: 11.5px; color: var(--ink2); line-height: 1.45; }
+.recal-metrics { display: flex; flex-wrap: wrap; gap: 8px 20px; }
+.recal-m { display: flex; align-items: baseline; gap: 8px; flex: 1 1 100%; }
+.recal-l { font-size: 10.5px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); min-width: 62px; }
+.recal-v { display: flex; align-items: baseline; gap: 7px; font-variant-numeric: tabular-nums; margin-left: auto; }
+.recal-b { font-size: 13px; color: var(--muted); }
 .recal-arrow { color: var(--muted); }
-.recal-n { font-size: 22px; font-weight: 700; color: var(--accent); }
-.recal-note { margin: 12px 0 0; font-size: 11.5px; color: var(--muted); line-height: 1.5; }
+.recal-n { font-size: 18px; font-weight: 700; color: var(--accent); }
+.recal-note { margin: 10px 0 0; font-size: 11px; color: var(--muted); line-height: 1.45; }
 .bench-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .bfilters { display: flex; gap: 6px; flex-wrap: wrap; }
 .bfilter { font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 8px; cursor: pointer;
