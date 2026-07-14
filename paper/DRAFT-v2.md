@@ -58,13 +58,21 @@ and/or critical and well-established functional domain (e.g. active site of an e
 without benign variation" — is defined only qualitatively; the guideline gives no
 algorithm for identifying such regions, and automation has been left to individual tool
 developers. In practice PM1 is one of the least consistently automated criteria, applied
-divergently across classifiers. [CITE:acmg2015][CITE:crosstool2026]
+divergently across classifiers. [CITE:acmg2015][CITE:crosstool2026] Tellingly, ClinGen's
+Sequence Variant Interpretation (SVI) group has, over the years, produced operational
+refinements for several difficult criteria — a decision tree for the loss-of-function
+PVS1 [CITE:pvs1], recommendations for PS1/PM5, and calibrated in-silico thresholds for
+PP3/BP4 [CITE:pejaver2022] — yet **no official specification exists for PM1**, which
+remains delegated to individual VCEPs and tool vendors. That absence is itself evidence
+that PM1 is hard to tackle, and is the gap this work addresses.
 
 The dominant automated approach infers hotspots from the **density of ClinVar pathogenic
 variants** in a sequence window. The clearest documented instance is Franklin's "hotspot
 rule": candidate regions are delimited by flanking benign variants and retained only when
-they contain pathogenic non-truncating variants, whose density then sets PM1 strength.
-[CITE:franklin] This family — implicit in several ACMG engines — has two structural flaws.
+they contain pathogenic non-truncating variants, whose density then sets PM1 strength;
+VarSome similarly documents a window-based enrichment of nearby pathogenic variants for
+PM1. [CITE:franklin][CITE:varsome] This family — implicit in several ACMG engines — has
+two structural flaws.
 First, it is **circular**: ClinVar classifications are themselves products of ACMG/AMP
 interpretation, so reusing their density as "independent" PM1 evidence re-uses prior
 conclusions. [CITE:clinvar] The circularity is now explicitly recognised: germline
@@ -75,15 +83,19 @@ size, collapses where ClinVar is sparse, and gives no benign credit to "coldspot
 of pathogenic variation, causing systematic misclassification (e.g. the BRCA1/BRCA2 coding
 coldspots). [CITE:dines2020] A second, more reproducible but coarser family applies PM1
 inside **curated functional domains** or hard-coded VCEP hotspot codons (e.g. TP53 codons
-175/245/248/249/273/282 plus cancer-hotspot recurrence; PTEN domain rules), which is
-gene-specific and does not generalise. [CITE:tp53vcep][CITE:pten][CITE:walsh2018]
+175/245/248/249/273/282 plus cancer-hotspot recurrence; PTEN domain rules).
+[CITE:tp53vcep][CITE:pten][CITE:walsh2018] Such gene-specific rules exist for only a few
+dozen expert-curated genes, however, and cannot be applied across the long tail of
+rare-disease genes that have no VCEP.
 
 Two lines of work aim to break the circularity with signals independent of ClinVar. One
 derives sub-genic intolerance from **population data**: missense tolerance ratio (MTR),
 regional missense constraint (MPC), constrained coding regions (CCR), homologous missense
 constraint at single-residue resolution (HMC), and — most directly — the gnomAD v4
-regional-missense-constraint map, which is ClinGen-calibrated so that regions below 20 % of
-expected missense variation reach PM1-Moderate support.
+regional-missense-constraint map, whose authors *propose* mapping sub-genic depletion to
+the ACMG points scale (regions below ~20 % of expected missense variation reaching
+Moderate). We stress this is a preprint proposal, not an official ClinGen recommendation;
+we cite it as the closest prior art, not as an endorsed standard.
 [CITE:mtr][CITE:mpc][CITE:ccr][CITE:hmc][CITE:rmc] These signals are powerful but
 frequency-based: they require cohorts large enough for depletion to reach significance and
 are weakest exactly where clinical genes are rare or short. The other line, well developed
@@ -99,21 +111,30 @@ to both clinical databases and allele frequency, and defined even where ClinVar 
 population constraint are silent. Its established ACMG use is per-variant **PP3**
 (calibrated in-silico evidence). [CITE:pejaver2022] Using AlphaMissense for the *regional*
 PM1 criterion is comparatively unexplored, and doing so naïvely risks double-counting with
-PP3. We show that a regional summary — an *island* — carries hotspot signal that is
-(i) database-independent and non-circular, (ii) transferable to sparse-ClinVar and short
-genes, and (iii) separable in principle from the variant's own per-residue score. The
-closest prior art is the gnomAD regional-constraint → PM1 preprint [CITE:rmc]: same problem
-shape, but a population-depletion signal rather than a predictor, and hence complementary
-rather than competing.
+PP3. We define an **island** as a contiguous stretch of residues whose smoothed
+AlphaMissense score stays above the "likely-pathogenic" boundary (Fig. 1 illustrates the
+construction from the per-residue AlphaMissense saturation heatmap). Such a regional
+summary carries hotspot signal that is (i) database-independent and non-circular,
+(ii) transferable to sparse-ClinVar and short genes, and (iii) separable in principle from
+the variant's own per-residue score. The closest prior art is the gnomAD
+regional-constraint → PM1 preprint [CITE:rmc]: same problem shape, but a population-
+depletion signal rather than a predictor, and hence complementary rather than competing.
 
-**Contributions.** (1) A simple, reproducible definition of AlphaMissense **islands**;
-(2) a precomputed genome-wide resource (BED, GRCh38/GRCh37) and its generation script;
-(3) **Archipelago**, an open browser over ~18,400 genes; (4) a benchmark against ClinGen
-expert curation with a transparent residue-level **error analysis** that makes the
-recall/precision trade-off interpretable; and (5) a graded-PM1 framework combining island
-membership with in-island ClinVar enrichment, designed to avoid PP3 double-counting.
+**Contributions.** (1) A simple, reproducible definition of AlphaMissense **islands**
+(Fig. 1); (2) a precomputed genome-wide resource (BED, GRCh38/GRCh37) and its generation
+script; (3) **Archipelago**, an open, interactive **protein browser** that places the
+island, AlphaMissense-saturation, ClinVar, domain and constraint tracks for any queried
+gene in front of a working geneticist — useful at the point of curation, independent of
+the PM1 question; (4) a benchmark against ClinGen expert curation with a transparent
+residue-level **error analysis** that makes the recall/precision trade-off interpretable;
+and (5) a graded-PM1 framework combining island membership with in-island ClinVar
+enrichment, designed to avoid PP3 double-counting.
 
 ### 1.1 Related work at a glance
+
+Table 1 summarises how the main approaches differ in signal, circularity and coverage.
+
+**Table 1. Approaches to identifying PM1 hotspot regions.**
 
 | Approach | Signal | Circular? | Genome-wide? | Representative |
 |---|---|---|---|---|
@@ -127,7 +148,9 @@ membership with in-island ClinVar enrichment, designed to avoid PP3 double-count
 
 ### 2.1 Island definition
 
-Per transcript (the AlphaMissense canonical isoform):
+Per transcript (the isoform AlphaMissense scores — its own canonical choice, which
+coincides with MANE Select for most but not all genes; §2.2 handles the mismatch). See
+Fig. 1 for a worked example.
 
 1. **Per-residue score** — the mean AlphaMissense pathogenicity across all 19 possible
    substitutions at the residue. [CITE:alphamissense]
@@ -140,9 +163,13 @@ Per transcript (the AlphaMissense canonical isoform):
 
 Output is a BED record per island: `chrom, start, end, transcript, uniprot,
 island_mean_score, island_length, residue_start, residue_end`. Reference implementation:
-`computeAlphaMissenseIslands.py`. Parameter choices (0.564, window 5, min length 35,
-pLDDT 50) and a sensitivity sweep are reported in §H1/Supplementary; the released BED was
-built with parameters [WITH/WITHOUT pLDDT mask — confirm].
+`computeAlphaMissenseIslands.py`. The four parameters (score threshold 0.564, smoothing
+window 5, minimum length 35, pLDDT 50) are examined in a Supplementary sensitivity
+analysis that sweeps the threshold (0.50–0.60), minimum length (15–50) and the pLDDT mask,
+reporting island count, proteome coverage and PM1 F1 at each setting; the minimum length
+in particular is contrasted against shorter cut-offs to justify 35 (and to resolve a
+docstring/argparse "≥11 vs 35" inconsistency). The released BED was built with parameters
+[WITH/WITHOUT pLDDT mask — confirm].
 
 ### 2.2 Data & precomputation
 
@@ -159,7 +186,7 @@ Because AlphaMissense's canonical transcript differs from MANE for a minority of
 ClinVar calls are attached by selecting, per gene, the RefSeq transcript whose reference
 amino acids are most concordant with the AlphaMissense sequence, and residues that
 disagree are dropped (isoform-concordance gate). The same isoform caveat is surfaced
-explicitly in the benchmark (§3.2).
+explicitly in the benchmark (§3.3).
 
 ### 2.3 The Archipelago browser
 
@@ -171,7 +198,7 @@ from CLNREVSTAT) so expert-panel calls stand out, UniProt domains, gnomAD missen
 (regional constraint) and cancer-hotspot tracks, an exon-boundary axis, and summary KPIs
 with a ClinVar consequence-breakdown modal. The plot supports drag-to-zoom and PNG export.
 A variant page evaluates PM1 for a typed `GENE:p.…`/`GENE:c.…`, and a benchmark explorer
-(§3.2) reproduces the PM1 evaluation with a per-variant divergence taxonomy. Live at
+(§3.3) reproduces the PM1 evaluation with a per-variant divergence taxonomy. Live at
 archipelago2.vercel.app.
 
 ### 2.4 Benchmark & error analysis
@@ -181,33 +208,52 @@ Repository (eRepo), taking PM1 as *applied* when it appears (any strength) in a 
 "Applied Evidence Codes (Met)". This is an expert, method-independent PM1 label. eRepo
 variants are matched to the engine's calls by **ClinVar Variation ID**. [CITE:clingen_svi]
 
-**Prediction.** The engine's PM1 state (`acmg_tags_v2`), which applies PM1 by **genomic
-overlap** between the variant and an AlphaMissense island (transcript-agnostic, missense /
-in-frame only, no benign downgrade at the binary level). Matching by ClinVar ID means no
-protein-isoform mapping is needed for the headline metric.
+**Prediction.** Our classification engine applies PM1 as a **binary** call whenever the
+variant's genomic position overlaps an AlphaMissense island (transcript-agnostic, missense
+/ in-frame variants only). Island overlap alone decides *whether* PM1 is met; the
+*strength* it is applied at (Supporting/Moderate/Strong) is a separate step driven by the
+island's ClinVar content, described in §4 — but the benchmark evaluates only the binary
+application. Matching by ClinVar ID means no protein-isoform mapping is needed for the
+headline metric.
 
-**Metrics.** True/false positive/negative are computed over the matched set;
-precision, recall and F1 are reported for PM1.
+**Metrics.** We compare PM1 as a **binary criterion** (applied vs. not), independent of
+evidence strength, to match the any-strength eRepo label; true/false positive/negative,
+precision, recall and F1 are computed over the matched set.
 
 **Divergence taxonomy (error analysis).** For every false positive and false negative we
 characterise the residue's AlphaMissense neighbourhood from its gene bundle: island
 overlap and distance to the nearest island; the count of ClinVar P/LP and B/LB missense
 residues within **±10 aa**; the mean AlphaMissense score; and domain membership. Each
-false call is assigned one descriptive category (Table 2). Where the eRepo variant maps to
+false call is assigned one descriptive category (Table 3). Where the eRepo variant maps to
 a different isoform than the AlphaMissense canonical sequence (reference amino acid
 disagrees), it is labelled *isoform-ambiguous* and left uncategorised rather than guessed.
 This analysis is descriptive — it does not re-score any variant.
 
 ## 3. Results
 
-### 3.1 PM1 performance vs. existing tools
+### 3.1 The AlphaMissense-islands resource
+
+Across the ~18,400 covered MANE proteins, **6,148 genes (33 %) carry at least one island**,
+for a total of **13,157 islands**. Islands are compact and local rather than whole-domain:
+median length **49 aa** (IQR 40–69; mean 60, max 683), with a median of **2 islands per
+island-bearing gene** (max 42), together covering a median of **18 % of the protein**
+(mean 23 %) in genes that have any. Critically, **74 % of islands (9,716/13,157) contain no
+ClinVar pathogenic or benign missense variant at all**, and only 17 % are ClinVar-
+pathogenic-enriched — i.e. most islands are defined purely from prediction, in regions
+where a ClinVar-density rule would be silent. This is the resource's central property: it
+extends a PM1-relevant hotspot signal to the majority of the proteome that clinical
+databases do not yet illuminate. A minority of proteins are absent from AlphaMissense (e.g.
+SHANK3/Q9BYB0) or lack a MANE-Select overlap (~1,955 UniProt entries) and are reported as a
+coverage limitation.
+
+### 3.2 PM1 performance vs. existing tools
 
 On the expert-curated benchmark, island-based PM1 is far more **specific** than
-window-based classifiers (Table 1): 0.70 precision vs. 0.33 (Franklin) and 0.19
+window-based classifiers (Table 2): 0.70 precision vs. 0.33 (Franklin) and 0.19
 (InterVar), at the best overall F1 (0.59). Window/domain tools reach high recall by
 flagging broad regions at a large precision cost. [CITE:intervar]
 
-**Table 1. PM1 against expert curation** *(published SeqOne benchmark; support = 1,270).*
+**Table 2. PM1 against expert curation** *(published SeqOne benchmark; support = 1,270).*
 
 | Tool | Precision | Recall | F1 |
 |---|---|---|---|
@@ -220,11 +266,12 @@ variants; 1,488 with PM1 applied by either side) the engine records 618 TP, 266 
 604 FN — precision 0.699, recall 0.506, F1 0.587 — reproducing the headline numbers.
 [Add 95 % bootstrap CIs and a paired test vs. comparators — §H4.]
 
-### 3.2 Error analysis: the divergence is systematic and interpretable
+### 3.3 Error analysis: the divergence is systematic and interpretable
 
 Rather than treat every disagreement with experts as noise, we categorise all 266 false
 positives and 604 false negatives from their AlphaMissense/ClinVar neighbourhood
-(Fig. 3, Table 2).
+(Fig. 3, Table 3). Full category definitions and per-gene counts are given in
+Supplementary Table S2 and are browsable in the live PM1 benchmark explorer.
 
 **False negatives are dominated by sub-threshold hotspots.** Of 604 FN, **403 (67 %)**
 are residues surrounded by a genuine ClinVar pathogenic hotspot (≥ 3 P/LP within ±10 aa)
@@ -245,7 +292,7 @@ inspecting), and only 9 (3 %) sit in regions with ≥ 2 nearby benign variants t
 weaken the hotspot claim (likely over-calls). 39 FP and 19 FN (58 total) are
 isoform-ambiguous and left uncategorised.
 
-**Table 2. Divergence taxonomy of PM1 false calls** *(counts; ±10 aa windows).*
+**Table 3. Divergence taxonomy of PM1 false calls** *(counts; ±10 aa windows).*
 
 | Class | Category | n | Interpretation |
 |---|---|---:|---|
@@ -265,7 +312,7 @@ precision/recall/F1 move to **0.84 / 0.63 / 0.72**. The point is not the numbers
 the residual disagreement with experts is concentrated in interpretable, mostly defensible
 strata — the profile of a specific, honest criterion rather than a broad, over-firing one.
 
-### 3.3 Orthogonality & illustrative genes
+### 3.4 Orthogonality & illustrative genes
 
 *KIF1A* (Fig. 2) shows motor-domain islands that are pathogenic-enriched (red) while a
 C-terminal island reads benign (blue); *PTEN* localises to the phosphatase hotspot; *TP53*
@@ -276,12 +323,6 @@ PM1-relevant signal *beyond the variant's own AlphaMissense/PP3 score* — is re
 defuse double-counting and is reported in §C2 [logistic model: pathogenic ~ variant_AM +
 in_island; test in_island after controlling for the point estimate].
 
-### 3.4 Coverage
-
-~18,400 genes are covered. A minority of proteins are absent from AlphaMissense (e.g.
-SHANK3/Q9BYB0) or lack a MANE-Select overlap (~1,955 UniProt entries); these are reported
-as a limitation.
-
 ### 3.5 Expert PM1 is itself only moderately reproducible
 
 Our benchmark treats expert-panel PM1 as ground truth, so its own consistency bounds what
@@ -290,7 +331,7 @@ any method can achieve. We therefore asked how reproducibly ClinGen VCEPs apply 
 export (1,006 with PM1 met), we searched — within the **same gene and same Expert Panel** —
 for pairs where PM1 was applied to one variant and, on a near neighbour, **explicitly
 recorded as not met**, restricting to pairs in which **both** variants are Pathogenic or
-Likely Pathogenic so that PM1's applicability is genuinely comparable (Table 3, full list
+Likely Pathogenic so that PM1's applicability is genuinely comparable (Table 4, full list
 in Supplementary Table S1).
 
 Such discordance is common and occurs at very short range: **15 pairs at the identical
@@ -303,7 +344,7 @@ G1185D (PM1 not met), or HNF4A R112 (met) two residues from R114 (not met), both
 in the Monogenic Diabetes / FBN1 panels. Relaxing the negative to "PM1 simply absent" (Tier
 2) yields 235 discordant pairs within ±5 aa across 30 genes.
 
-**Table 3. Inter-expert PM1 discordance (same VCEP, both P/LP, PM1 met vs. explicitly not
+**Table 4. Inter-expert PM1 discordance (same VCEP, both P/LP, PM1 met vs. explicitly not
 met).**
 
 | Gene | Expert Panel | PM1 applied | PM1 explicitly not met | Δ aa |
@@ -318,7 +359,7 @@ met).**
 Because these panels operate from *refined, gene-specific* ACMG specifications, the
 divergence is not a failure of expertise but evidence that PM1 — as currently defined —
 resists reproducible application even by its most qualified users. Two consequences follow.
-First, part of the residual disagreement in §3.2 (notably the sub-threshold-hotspot false
+First, part of the residual disagreement in §3.3 (notably the sub-threshold-hotspot false
 negatives) is measured against a ground truth that is itself noisy at the residue level.
 Second, it strengthens the case for a **criterion-independent, reproducible** regional
 definition: a variant either falls in an AlphaMissense island or it does not, identically
@@ -328,7 +369,9 @@ for every substitution at a codon and for every gene, curated or not. [CITE:tp53
 
 Island membership (a structural/predictive hotspot signal) is combined with in-island
 ClinVar pathogenic enrichment (empirical corroboration) to modulate PM1 on the ACMG points
-scale. [CITE:tavtigian2018][CITE:tavtigian2020]
+scale (Table 5). [CITE:tavtigian2018][CITE:tavtigian2020]
+
+**Table 5. Proposed PM1 grading from cumulative island + ClinVar evidence.**
 
 | Evidence at the residue | PM1 strength |
 |---|---|
@@ -463,6 +506,9 @@ and prior-art/novelty verdict in `REFERENCES.md`.*
     *Am J Hum Genet* 2021;108:2248–2258. **[verify PMID]**
 40. **[clingen_svi]** ClinGen SVI PM1 guidance. *(No standalone primary doc located —
     VCEP specs + SVI notes; verify at clinicalgenome.org.)*
+41. **[pvs1]** Abou Tayoun AN, et al.; ClinGen SVI. Recommendations for interpreting the
+    loss-of-function PVS1 ACMG/AMP criterion. *Hum Mutat* 2018;39(11):1517–1524.
+    doi:10.1002/humu.23626 · PMID 30192042.
 
 ## Author contributions
 

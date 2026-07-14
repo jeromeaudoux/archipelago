@@ -23,6 +23,10 @@ match `[CITE:key]` in `DRAFT-v2.md`.*
   calibration = the template for grading PM1 strength; also the PP3 use to distinguish
   from.)* Follow-up (more tools): AJHG 2024, PMID 39345488 *(check if AlphaMissense
   recalibrated for PP3/BP4).*
+- **[pvs1]** Abou Tayoun AN, et al.; ClinGen SVI. Recommendations for interpreting the
+  loss-of-function PVS1 ACMG/AMP criterion. *Hum Mutat* 2018;39(11):1517–1524.
+  doi:10.1002/humu.23626 · PMID 30192042. *(Example of SVI operationalising a hard
+  criterion — the contrast being that no such PM1 specification exists.)*
 - **[clingen_svi]** ClinGen Sequence Variant Interpretation Working Group PM1 guidance —
   *no standalone primary document located; VCEP specs + secondary SVI notes only.*
   **[verify at clinicalgenome.org — e.g. PM1+PP3 combination cap; PM1↓ when PS1/PM5 apply.]**
