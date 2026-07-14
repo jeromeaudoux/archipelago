@@ -13,6 +13,8 @@ export interface Bundle {
   cv_counts?: Record<"missense" | "lof" | "other", [number, number]>;
   /** cancerhotspots.org residue hotspots (present only for genes with entries). */
   hotspots?: { p: number; r: string; q?: number; n?: number; onc: number }[];
+  /** gnomAD regional missense constraint: observed/expected per sub-region. */
+  rmc?: { s: number; e: number; oe: number; obs?: number; exp?: number; p?: number }[];
 }
 
 const ICON: Record<string, string> = {
@@ -23,11 +25,12 @@ const ICON: Record<string, string> = {
   layers: `<svg class="kpi-i" viewBox="0 0 24 24"><path d="M12 3l8.5 4.5L12 12 3.5 7.5z"/><path d="M4 12.5l8 4.2 8-4.2"/></svg>`,
   expand: `<svg class="kpi-x" viewBox="0 0 24 24"><path d="M9 4H4v5"/><path d="M15 20h5v-5"/><path d="M4 4l6 6"/><path d="M20 20l-6-6"/></svg>`,
   target: `<svg class="kpi-i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.4"/></svg>`,
+  constraint: `<svg class="kpi-i" viewBox="0 0 24 24"><path d="M9 5v4H5"/><path d="M15 5v4h4"/><path d="M9 19v-4H5"/><path d="M15 19v-4h4"/></svg>`,
 };
 
 const B_REF = 251, B_MISSING = 252, Q_MAX = 250;
 const CUTOFF_B = 0.34, CUTOFF_P = 0.564;
-const AXIS = 22, DOM = 34, ISL = 26, HOTS = 26, CVH = 66, SCORE = 76, ROWH = 15;
+const AXIS = 22, DOM = 34, ISL = 26, RMC = 24, HOTS = 26, CVH = 66, SCORE = 76, ROWH = 15;
 
 const css = (v: string) =>
   getComputedStyle(document.documentElement).getPropertyValue(v).trim();
@@ -119,6 +122,8 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
   const islandResidues = b.islands.reduce((s, i) => s + (i.e - i.s + 1), 0);
   const hasBd = !!(b.cv_counts && Object.values(b.cv_counts).some((v) => v[0] + v[1] > 0));
   const hasHot = !!(b.hotspots && b.hotspots.length);
+  const hasRmc = !!(b.rmc && b.rmc.length);
+  const minOE = hasRmc ? Math.min(...b.rmc!.map((r) => r.oe)) : null;
 
   root.innerHTML = `
     <div class="vhead">
@@ -160,6 +165,11 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
           <div class="kpi-n">${b.hotspots!.length}</div>
           <div class="kpi-sub">cancerhotspots.org</div>
         </div>` : ""}
+        ${hasRmc ? `<div class="kpi">
+          <div class="kpi-head">${ICON.constraint}<span>Missense o/e</span></div>
+          <div class="kpi-n">${minOE!.toFixed(2)}</div>
+          <div class="kpi-sub">gnomAD region (min)</div>
+        </div>` : ""}
       </div>
     </div>
     <div class="card">
@@ -176,6 +186,7 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
           <span class="key"><i class="sw isln"></i>no ClinVar</span>
           <span class="key"><i class="sw domain"></i>Domain</span>
           ${hasHot ? `<span class="key"><i class="sw hotspot"></i>Cancer hotspot</span>` : ""}
+          ${hasRmc ? `<span class="key"><i class="sw rmc"></i>Missense-constrained (low o/e)</span>` : ""}
         </div>
         <div class="zoom">
           <button id="v-png" title="Download a PNG of the whole plot">Save PNG</button>
@@ -191,6 +202,7 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
             <canvas id="v-axt"></canvas>
             <canvas id="v-dom"></canvas>
             <canvas id="v-isl"></canvas>
+            ${hasRmc ? `<canvas id="v-rmc"></canvas>` : ""}
             ${hasHot ? `<canvas id="v-hot"></canvas>` : ""}
             <canvas id="v-cv"></canvas>
             <canvas id="v-score"></canvas>
@@ -231,6 +243,7 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
     { id: "v-axt", h: AXIS, label: "" },
     { id: "v-dom", h: DOM, label: "Domains" },
     { id: "v-isl", h: ISL, label: "AM islands" },
+    ...(hasRmc ? [{ id: "v-rmc", h: RMC, label: "Missense o/e" }] : []),
     ...(hasHot ? [{ id: "v-hot", h: HOTS, label: "Cancer hotspots" }] : []),
     { id: "v-cv", h: CVH, label: "ClinVar" },
     { id: "v-score", h: SCORE, label: "Mean AM" },
@@ -357,6 +370,24 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
       else { ctx.strokeStyle = css("--hotspot"); ctx.lineWidth = 1.5; ctx.stroke(); }
     }
   }
+  function drawRmc(): void {
+    const ctx = ctxFor("v-rmc", RMC);
+    const col = hexToRgb(css("--rmc"));
+    for (const r of b.rmc!) {
+      const x = X(r.s), w = (r.e - r.s + 1) * colW;
+      // more constrained (lower o/e) → darker/more opaque
+      const a = 0.15 + 0.7 * Math.max(0, Math.min(1, (0.85 - r.oe) / 0.85));
+      ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},${a.toFixed(3)})`;
+      ctx.fillRect(x, 4, Math.max(w, 1), RMC - 8);
+      ctx.strokeStyle = "rgba(0,0,0,.12)"; ctx.lineWidth = 1;
+      ctx.strokeRect(x + 0.5, 4.5, Math.max(w, 1), RMC - 9);
+      if (w > 40) {
+        ctx.fillStyle = a > 0.5 ? "#fff" : css("--ink2");
+        ctx.font = "10px ui-monospace,monospace"; ctx.textBaseline = "middle"; ctx.textAlign = "center";
+        ctx.fillText(r.oe.toFixed(2), x + w / 2, RMC / 2);
+      }
+    }
+  }
   function drawIsl(): void {
     const ctx = ctxFor("v-isl", ISL);
     for (const i of b.islands) {
@@ -404,6 +435,7 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
     ($("v-z") as HTMLInputElement).value = String(colW);
     drawHeat(); drawScore(); drawClinvar(); drawIsl(); drawDom();
     if (hasHot) drawHotspots();
+    if (hasRmc) drawRmc();
     drawAxis("v-axt", true); drawAxis("v-axb", false);
     xhair.style.height = LANES.reduce((s, l) => s + l.h, 0) + "px";
   }
@@ -437,12 +469,14 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
     const isl = b.islands.find((i) => p >= i.s && p <= i.e);
     const dom = b.domains.find((d) => p >= d.s && p <= d.e);
     const hot = b.hotspots?.find((h) => h.p === p);
+    const rmc = b.rmc?.find((x) => p >= x.s && p <= x.e);
     const cvp = cvMap.get(p), cvb = cvbMap.get(p);
     tip.innerHTML = `<div class="th">${refAA} ${p}</div>`
       + `<div class="row"><span>Mean AM</span><b>${m != null ? m.toFixed(3) : "—"}</b></div>`
       + (cvp ? cvRow(cvp, p) : "") + (cvb ? cvRow(cvb, p) : "")
       + (hot ? `<div class="row"><span>Cancer hotspot</span><b>${hot.r}${hot.p}${hot.onc ? " · OncoKB" : ""}</b></div>`
         + `<div class="row"><span>&nbsp;cancerhotspots</span><b>${hot.n != null ? hot.n + " mutations" : ""}${hot.q != null ? ` · q=${hot.q.toExponential(1)}` : ""}</b></div>` : "")
+      + (rmc ? `<div class="row"><span>Missense o/e</span><b>${rmc.oe.toFixed(2)}${rmc.obs != null ? ` (${rmc.obs}/${rmc.exp} obs/exp)` : ""}</b></div>` : "")
       + (dom ? `<div class="row"><span>Domain</span><b>${dom.name}</b></div>` : "")
       + (isl ? `<div class="row"><span>AM island</span><b>${isl.s}–${isl.e} (${isl.m.toFixed(2)})</b></div>`
         + `<div class="row"><span>&nbsp;in island</span><b>${isl.plp || 0} P/LP · ${isl.blb || 0} B/LB</b></div>` : "")
