@@ -388,20 +388,40 @@ Island membership (a structural/predictive hotspot signal) is combined with in-i
 ClinVar pathogenic enrichment (empirical corroboration) to modulate PM1 on the ACMG points
 scale (Table 5). [CITE:tavtigian2018][CITE:tavtigian2020]
 
-**Table 5. Proposed PM1 grading from cumulative island + ClinVar evidence.**
+**Calibration (Fig. 6).** We calibrated these levels against a ClinVar reference (46,955
+P/LP as pathogenic samples, 121,506 B/LB as benign, across 15,744 genes), assigning each
+residue its island context by **leave-one-out ClinVar** (the island's P/LP and B/LB counts
+with the focal residue removed, so the covariate is the neighbourhood, not the outcome), and
+estimating the prior-independent likelihood ratio (LR) for each stratum — directly comparable
+to the Tavtigian OddsPath thresholds for Supporting (2.08), Moderate (4.33) and Strong (18.7).
+[CITE:tavtigian2018][CITE:pejaver2022] The proposed ladder holds up empirically (Table 5):
+an AM island with **no** ClinVar corroboration already reaches Supporting (LR 2.5, 95 %
+gene-cluster CI 2.2–2.9), and in-island corroboration produces a clean dose-response into
+Moderate and Strong, while benign-contradicted islands are downweighted; outside islands the
+LR is < 1.
 
-| Evidence at the residue | PM1 strength |
-|---|---|
-| Not in an AM island | Not met |
-| In an AM island, little/no ClinVar corroboration | Supporting (+1) |
-| In an AM island that is pathogenic-enriched (several P/LP, no benign) | Moderate (+2) |
-| In a dense, well-established hotspot island (many P/LP, zero benign) | Strong (+4) |
-| Island contradicted by benign variation (B/LB-heavy) | Downweight / not met |
+**Table 5. PM1 grading calibrated by island context** *(likelihood ratio vs. a ClinVar P/LP
+/ B/LB reference, leave-one-out; strength = highest ACMG tier whose LR threshold the 95 % CI
+lower bound clears).*
 
-The star-weighted ClinVar view (§2.3) makes the corroboration auditable — enrichment
-driven by expert-panel (3–4★) submissions is weighted differently from single-submitter
-calls. Final cut-offs are gene/VCEP-specific; this grading is presented as a **proposed
-framework** pending empirical OddsPath calibration (§C3). [CITE:pejaver2022]
+| Island context (leave-one-out ClinVar) | LR [95 % CI] | Calibrated strength |
+|---|---|---|
+| Not in an AM island | 0.77 [0.74–0.79] | Not met |
+| In an island, **no** other P/LP nearby | **2.5 [2.2–2.9]** | **Supporting (+1)** |
+| In an island, 1 other P/LP | 7.9 [6.7–9.9] | Moderate (+2) |
+| In an island, 2–4 other P/LP | 15.6 [13.4–18.5] | Moderate (+2) |
+| In an island, 5–9 other P/LP | 36.6 [29.4–47.0] | Strong (+4) |
+| In an island, ≥10 other P/LP | 95.9 [76.3–119.1] | Strong (+4) |
+| In an island, ≥2 other B/LB (benign-contradicted) | 4.8 [3.8–6.3] | Supporting (downweighted) |
+
+The star-weighted ClinVar view (§2.3) makes the corroboration auditable — enrichment driven
+by expert-panel (3–4★) submissions is weighted differently from single-submitter calls. The
+Supporting-level LR of the island-only stratum is what licenses triggering PM1 by default on
+the many island-bearing genes with no VCEP (§5). Caveats: the reference inherits ClinVar
+ascertainment bias (the class used by ClinGen PP3/BP4 calibration [CITE:pejaver2022]), and
+leave-one-out removes the focal residue but not the residual correlation of neighbouring
+ClinVar labels; strengths should be re-derived per ClinVar release and ideally cross-checked
+against a non-ClinVar (MAVE) truth. [CITE:fayer2021]
 
 ## 5. Discussion
 
@@ -449,10 +469,11 @@ strength once a revised specification exists, rather than remaining a heuristic.
 islands as a calibration-ready, criterion-independent substrate for whichever PM1 (or
 PM1/PM5) definition the revision adopts.
 
-**Limitations & risks.** PP3/PM1 double-counting is addressed (§3.4) with a concrete
-co-application rule — safe against REVEL/CADD, not against an AM-based PP3; remaining items
-are evidence-strength calibration (§C3), the benchmark ground-truth definition, parameter
-robustness (§H1), isoform/coverage handling, and data licensing.
+**Limitations & risks.** The two headline objections are now addressed: PP3/PM1
+double-counting (§3.4, with the REVEL/CADD-vs-AM co-application rule) and evidence-strength
+calibration (§4/Fig. 6, leave-one-out ClinVar likelihood ratios). Remaining items are the
+benchmark ground-truth definition, parameter robustness (§H1), isoform/coverage handling, the
+residual ClinVar-ascertainment/correlation caveats on the calibration, and data licensing.
 
 ## 6. Data & code availability
 
@@ -472,8 +493,10 @@ robustness (§H1), isoform/coverage handling, and data licensing.
 **Critical** — C1 finalise the ground-truth description (done: ClinGen eRepo expert PM1
 calls, matched by ClinVar ID); C2 orthogonality-beyond-PP3 (**done, §3.4/Fig. 5**: island
 membership adds ~5× pathogenicity odds over REVEL/CADD but nothing over AlphaMissense itself
-→ co-apply PM1 with PP3 only when PP3 is not AM); C3 OddsPath calibration or "proposed
-framework" labelling. **High** — H1 parameter
+→ co-apply PM1 with PP3 only when PP3 is not AM); C3 evidence-strength calibration (**done, §4/Fig. 6**:
+leave-one-out ClinVar likelihood ratios — island-only LR 2.5 = Supporting, rising through
+Moderate to Strong with corroboration; re-derive per ClinVar release, ideally cross-check vs
+MAVE). **High** — H1 parameter
 justification + train/test split + sensitivity sweep (resolve docstring "≥11" vs argparse
 "35"); H2 pLDDT-mask ablation + which BED released; H3 comparator method/versions; H4 CIs
 + paired test. **Medium** — hg19 provenance; isoform handling; coverage; RMC agreement;
