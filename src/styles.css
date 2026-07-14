@@ -422,6 +422,7 @@ a.ghost { display: inline-flex; align-items: center; text-decoration: none; }
 .pm1badge { display: inline-block; padding: 1px 8px; border-radius: 20px; font-size: 11.5px; font-family: var(--font-mono); }
 .pm1badge.on { background: var(--accent-weak); color: var(--accent); }
 .pm1badge.off { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
+.pm1badge.na { background: transparent; color: var(--muted); border: 1px dashed var(--muted); }
 .rescat { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11.5px; font-weight: 600; color: #fff; }
 .rescat.tp { background: #40d3b2; color: #05372c; }
 .rescat.fp { background: var(--pathogenic); }

@@ -6,11 +6,12 @@ import type { Bundle } from "./viewer";
 interface Row {
   g: string; v: string; c: string; hgvs: string; dis: string; panel: string; link: string;
   clinvar: string; assertion: string; met: string;
-  truth: boolean; tstr: string; pred: boolean; pstr: string; cat: "tp" | "fp" | "fn";
+  truth: boolean; tstr: string; pred: boolean; pstr: string; pr: string; cat: "tp" | "fp" | "fn";
 }
 interface Data {
   summary: { tp: number; fp: number; fn: number; tn: number;
-    precision: number; recall: number; f1: number; matched: number };
+    precision: number; recall: number; f1: number; matched: number;
+    fn_not_missense: number; fn_no_island: number };
   variants: Row[];
 }
 type LoadBundle = (gene: string) => Promise<Bundle>;
@@ -75,7 +76,11 @@ export function renderBenchmark(root: HTMLElement, data: Data, loadBundle: LoadB
       <p class="bench-caveat">Prediction = the engine's <span class="mono">acmg_tags_v2</span> PM1 state
         (AlphaMissense-island overlap). Ground truth = PM1 (any strength) in the eRepo “Applied Evidence
         Codes (Met)”, matched by ClinVar ID and compared strength-independently, exactly as in
-        <span class="mono">benchmark_acmg.py</span>.</p>
+        <span class="mono">benchmark_acmg.py</span>.
+        Of the ${s.fn} false negatives, <b>${s.fn_not_missense}</b> are non-missense variants
+        (frameshift / nonsense / splice) that PM1 — a missense hot-spot criterion — is not applied to
+        (shown as <span class="pm1badge na">N/A · not missense</span>); the other ${s.fn_no_island}
+        are missense residues outside any island.</p>
       <div id="bench-modal"></div>
     </div>`;
 
@@ -88,6 +93,10 @@ export function renderBenchmark(root: HTMLElement, data: Data, loadBundle: LoadB
 
   const badge = (str: string, on: boolean) =>
     `<span class="pm1badge ${on ? "on" : "off"}">${str || (on ? "PM1" : "not applied")}</span>`;
+  const engineBadge = (r: Row) =>
+    r.pred ? `<span class="pm1badge on">${r.pstr || "PM1"}</span>`
+    : r.pr === "notmiss" ? `<span class="pm1badge na" title="PM1 applies only to missense / in-frame variants">N/A · not missense</span>`
+    : `<span class="pm1badge off">not met</span>`;
   const geneLink = (g: string) => `<a href="?gene=${g}" data-gene-link="${g}" class="blink bg">${g}</a>`;
 
   function renderVariantTable(): void {
@@ -102,7 +111,7 @@ export function renderBenchmark(root: HTMLElement, data: Data, loadBundle: LoadB
       <td class="mono bv">${r.hgvs || r.v}</td>
       <td class="bdis" title="${r.dis}">${r.dis || "—"}</td>
       <td>${badge(r.tstr, r.truth)}</td>
-      <td>${badge(r.pstr, r.pred)}</td>
+      <td>${engineBadge(r)}</td>
       <td><span class="rescat ${CAT[r.cat].cls}">${CAT[r.cat].label}</span></td>
     </tr>`).join("");
     countEl.textContent = `${view.length.toLocaleString()} variant${view.length === 1 ? "" : "s"}`

@@ -45,11 +45,20 @@ def parse_predictions(path):
                 continue
             on = pm1.get("state") == "on"
             pstr = (pm1.get("evidence_level") or "").title() if on else ""
+            cids = pm1.get("comment_ids", []) or []
+            if on:
+                reason = "island"
+            elif any("NOT_MISSENSE" in c for c in cids):
+                reason = "notmiss"     # excluded: not a missense / in-frame variant
+            elif any("PM1_AM_OFF" in c for c in cids):
+                reason = "noisland"    # missense but no island overlap
+            else:
+                reason = "other"
             cvids = d.get("element", {}).get("extdb", {}).get("clinvar", []) or []
             if isinstance(cvids, (str, int)):
                 cvids = [cvids]
             for cid in cvids:
-                pred[str(cid)] = {"pred": on, "pstr": pstr}
+                pred[str(cid)] = {"pred": on, "pstr": pstr, "pr": reason}
     return pred
 
 
@@ -106,7 +115,7 @@ def main():
                 "assertion": (r.get("Assertion") or "").strip(),
                 "met": ", ".join(met_list),
                 "truth": truth, "tstr": tstr,
-                "pred": p["pred"], "pstr": p["pstr"],
+                "pred": p["pred"], "pstr": p["pstr"], "pr": p.get("pr", "other"),
                 "cat": cat,
             })
 
@@ -114,9 +123,13 @@ def main():
     prec = tp / (tp + fp) if tp + fp else 0
     rec = tp / (tp + fn) if tp + fn else 0
     f1 = 2 * prec * rec / (prec + rec) if prec + rec else 0
+    fn_notmiss = sum(1 for r in rows if r["cat"] == "fn" and r["pr"] == "notmiss")
+    fn_noisland = sum(1 for r in rows if r["cat"] == "fn" and r["pr"] == "noisland")
     summary = {**counts, "precision": round(prec, 4), "recall": round(rec, 4),
                "f1": round(f1, 4), "matched": tp + fp + fn + counts["tn"],
-               "n_rows": len(rows)}
+               "n_rows": len(rows),
+               "fn_not_missense": fn_notmiss, "fn_no_island": fn_noisland,
+               "fn_other": fn - fn_notmiss - fn_noisland}
     rows.sort(key=lambda x: (x["cat"], x["g"], x["hgvs"]))
     os.makedirs(C.DATA_DIR, exist_ok=True)
     with open(C.PM1_BENCHMARK_JSON, "w") as fh:
