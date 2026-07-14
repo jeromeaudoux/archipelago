@@ -93,9 +93,11 @@ def main():
             variation = r.get("Variation", "")
             m = PVAR_RE.search(variation)
             vshort = f"{AA3.get(m.group(1), '?')}{m.group(2)}{AA3.get(m.group(3), m.group(3))}" if m else ""
+            cm = re.search(r":(c\.[^ )]+)", variation) or re.search(r"(c\.[0-9][^ ),]*)", r.get("HGVS Expressions", ""))
             rows.append({
                 "g": gene,
                 "v": vshort,                       # 1-letter p. (for the app PM1 link), may be ""
+                "c": cm.group(1) if cm else "",    # c. HGVS (fallback for the PM1 view)
                 "hgvs": clean_variation(variation),
                 "dis": (r.get("Disease") or "").strip()[:90],
                 "panel": (r.get("Expert Panel") or "").strip(),

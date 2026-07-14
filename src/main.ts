@@ -90,7 +90,7 @@ async function showBenchmark(push = true): Promise<void> {
   root.innerHTML = `<div class="state"><div class="spinner"></div><p>Loading PM1 benchmark…</p></div>`;
   try {
     if (!benchData) benchData = await (await fetch("/data/pm1_benchmark.json")).json();
-    renderBenchmark(root, benchData!);
+    renderBenchmark(root, benchData!, fetchBundle);
   } catch {
     root.innerHTML = `<div class="state"><h2>Benchmark data not found</h2>
       <p>Run <span class="mono">python3 scripts/build_pm1_benchmark.py</span>.</p></div>`;
