@@ -2,7 +2,7 @@
 
 export interface Island { s: number; e: number; m: number; plp?: number; blb?: number; }
 export interface Domain { name: string; s: number; e: number; }
-export interface CVar { p: number; ref: string; alt: string; sig: string; n: number; }
+export interface CVar { p: number; ref: string; alt: string; sig: string; n: number; st?: number; }
 export interface Bundle {
   gene: string; uniprot: string; ensembl: string; refseq: string;
   length: number; aa_order: string;
@@ -217,7 +217,7 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
       </div>
       <div class="hint">Heatmap cell = AlphaMissense pathogenicity for that substitution.
         Islands are colored by ClinVar overlap (red = pathogenic-heavy, blue = benign-heavy,
-        amber = none). ClinVar lollipops: P/LP up, B/LB down (size ∝ #records). Hover for details; drag across the plot to zoom to a region, Fit to reset.</div>
+        amber = none). ClinVar lollipops: P/LP up, B/LB down — head size ∝ #records, pin height ∝ review stars (0–4★). Hover for details; drag across the plot to zoom to a region, Fit to reset.</div>
     </div>
     <p class="vfoot">AlphaMissense (DeepMind, CC BY 4.0) · ClinVar P/LP + B/LB missense on
       <code>${b.refseq || "RefSeq"}</code> · UniProt domains · AM islands (score&gt;0.564, ≥35 aa).</p>
@@ -299,7 +299,7 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
         d.innerHTML = L.id === "v-score"
           ? `<span>Mean AM<br><span style="color:var(--muted);font-size:10px">1.0 – 0.0</span></span>`
           : L.id === "v-cv"
-            ? `<span>ClinVar<br><span style="color:var(--muted);font-size:10px">P/LP ↑ · B/LB ↓</span></span>`
+            ? `<span>ClinVar<br><span style="color:var(--muted);font-size:10px">P/LP ↑ · B/LB ↓<br>height ∝ review ★</span></span>`
             : `<span>${L.label}</span>`;
       }
       gutter.appendChild(d);
@@ -343,23 +343,25 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
     ctx.strokeStyle = css("--score-stroke"); ctx.lineWidth = 1.2; ctx.stroke();
   }
 
-  function lolli(ctx: CanvasRenderingContext2D, x: number, mid: number, r: number, up: boolean, color: string): void {
-    const y = up ? mid - 8 - r : mid + 8 + r;
+  function lolli(ctx: CanvasRenderingContext2D, x: number, mid: number, r: number, up: boolean, color: string, ext = 0): void {
+    const y = up ? mid - 6 - r - ext : mid + 6 + r + ext;
     ctx.strokeStyle = css("--muted"); ctx.globalAlpha = 0.5; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(x, mid); ctx.lineTo(x, y); ctx.stroke(); ctx.globalAlpha = 1;
     ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill();
     ctx.strokeStyle = css("--panel"); ctx.lineWidth = 1; ctx.stroke();
   }
+  const STAR_EXT = 4;  // stem length added per ClinVar gold star (0..4)
   function drawClinvar(): void {
     const ctx = ctxFor("v-cv", CVH); const mid = CVH / 2;
     ctx.strokeStyle = css("--grid"); ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(0, mid + 0.5); ctx.lineTo(contentW(), mid + 0.5); ctx.stroke();
+    const rad = (n: number) => 2.2 + Math.min(n - 1, 4) * 0.5;
     const pr: Record<string, number> = { P: 0, PLP: 1, LP: 2 };
     [...b.clinvar].sort((a, c) => pr[a.sig] - pr[c.sig]).reverse().forEach((v) =>
-      lolli(ctx, X(v.p) + Math.max(colW / 2, 0.5), mid, 2.4 + Math.min(v.n - 1, 4) * 0.85, true, CVCOL[v.sig]));
+      lolli(ctx, X(v.p) + Math.max(colW / 2, 0.5), mid, rad(v.n), true, CVCOL[v.sig], (v.st || 0) * STAR_EXT));
     const br: Record<string, number> = { B: 0, BLB: 1, LB: 2 };
     [...b.clinvar_benign].sort((a, c) => br[a.sig] - br[c.sig]).reverse().forEach((v) =>
-      lolli(ctx, X(v.p) + Math.max(colW / 2, 0.5), mid, 2.4 + Math.min(v.n - 1, 4) * 0.85, false, CVCOL[v.sig]));
+      lolli(ctx, X(v.p) + Math.max(colW / 2, 0.5), mid, rad(v.n), false, CVCOL[v.sig], (v.st || 0) * STAR_EXT));
   }
   function islandColor(i: Island): string {
     const plp = i.plp || 0, blb = i.blb || 0;
@@ -474,8 +476,11 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
   const CLS = (s: number) => (s >= CUTOFF_P ? "likely pathogenic" : s <= CUTOFF_B ? "likely benign" : "ambiguous");
   const clsColor = (s: number) => (s >= CUTOFF_P ? css("--pathogenic") : s <= CUTOFF_B ? css("--benign") : css("--ambiguous"));
   function cvRow(v: CVar, p: number): string {
+    const st = v.st || 0;
+    const stars = "★".repeat(st) + "☆".repeat(4 - st);
     return `<div class="row" style="margin-top:2px"><span>ClinVar</span><span class="pill" style="background:${CVCOL[v.sig]}">${CVNAME[v.sig]}</span></div>`
-      + `<div class="row"><span>&nbsp;</span><b>${v.ref}${p}${v.alt} · ${v.n} record${v.n > 1 ? "s" : ""}</b></div>`;
+      + `<div class="row"><span>&nbsp;</span><b>${v.ref}${p}${v.alt} · ${v.n} record${v.n > 1 ? "s" : ""}</b></div>`
+      + `<div class="row"><span>review</span><span title="${st}/4 gold stars">${stars}</span></div>`;
   }
   function onMove(e: MouseEvent): void {
     if (dragX !== null) {                        // rubber-band zoom selection

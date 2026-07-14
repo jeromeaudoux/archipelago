@@ -23,7 +23,22 @@ import config as C
 import lib
 
 CLNSIG_RE = re.compile(r"CLNSIG=([^;]+)")
+CLNREVSTAT_RE = re.compile(r"CLNREVSTAT=([^;]+)")
 CSQ_RE = re.compile(r"CSQ=([^;\t]+)")
+
+# ClinVar review status -> gold-star rating (0..4).
+REVSTAT_STARS = {
+    "practice_guideline": 4,
+    "reviewed_by_expert_panel": 3,
+    "criteria_provided,_multiple_submitters,_no_conflicts": 2,
+    "criteria_provided,_single_submitter": 1,
+    "criteria_provided,_conflicting_classifications": 1,
+    "criteria_provided,_conflicting_interpretations": 1,
+}
+
+
+def stars_of(revstat):
+    return REVSTAT_STARS.get(revstat, 0)
 
 LOF_TERMS = ("stop_gained", "frameshift_variant", "splice_acceptor_variant",
              "splice_donor_variant", "start_lost", "stop_lost", "transcript_ablation")
@@ -77,6 +92,8 @@ def collect_clinvar(vcf_path):
                 sig, rank, store, pb = C.BENIGN_SIG[clnsig], C.BENIGN_RANK, benign, 1
             else:
                 continue
+            rs = CLNREVSTAT_RE.search(line)
+            stars = stars_of(rs.group(1)) if rs else 0
             mc = CSQ_RE.search(line)
             if not mc:
                 continue
@@ -102,9 +119,11 @@ def collect_clinvar(vcf_path):
                 d = store[symbol][nm_base]
                 cur = d.get(pos)
                 if cur is None:
-                    d[pos] = {"p": pos, "ref": ref, "alt": alt, "sig": sig, "n": 1}
+                    d[pos] = {"p": pos, "ref": ref, "alt": alt, "sig": sig, "n": 1, "st": stars}
                 else:
                     cur["n"] += 1
+                    if stars > cur["st"]:
+                        cur["st"] = stars
                     if rank[sig] > rank[cur["sig"]]:
                         cur["sig"], cur["alt"] = sig, alt
 
