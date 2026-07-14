@@ -123,7 +123,17 @@ def main():
             if tx is not None:
                 rmc = sorted(with_rmc[sym][tx], key=lambda x: x["s"])
                 updated += 1
-        if rmc is None and sym in gene_oe:            # gene-level fallback
+            else:
+                # isoform-discordant: can't place sub-regions safely, but the gene-level
+                # o/e is transcript-agnostic — aggregate obs/exp for a whole-protein band.
+                bt = max(with_rmc[sym], key=lambda t: sum(r["exp"] for r in with_rmc[sym][t]))
+                regs = with_rmc[sym][bt]
+                tobs = sum(r["obs"] for r in regs); texp = sum(r["exp"] for r in regs)
+                if texp > 0:
+                    rmc = [{"s": 1, "e": length, "oe": round(tobs / texp, 4),
+                            "obs": tobs, "exp": round(texp, 1), "whole": 1}]
+                    level += 1
+        if rmc is None and sym in gene_oe:            # gene-level (no sub-regional constraint)
             g = gene_oe[sym]
             rmc = [{"s": 1, "e": length, "oe": g["oe"], "obs": g["obs"], "exp": g["exp"], "whole": 1}]
             level += 1
