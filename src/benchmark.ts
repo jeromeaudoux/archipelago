@@ -67,7 +67,7 @@ export function renderBenchmark(root: HTMLElement, data: Data, loadBundle: LoadB
           <button class="bfilter" data-f="fp">FP ${s.fp}</button>
           <button class="bfilter" data-f="fn">FN ${s.fn}</button>
         </div>
-        <input id="bench-search" class="bsearch" type="text" placeholder="Filter by gene, variant or disease…" spellcheck="false" />
+        <input id="bench-search" class="bsearch" type="search" placeholder="Filter by gene, variant or disease…" spellcheck="false" />
       </div>
 
       <div class="btable-wrap"><table class="btable"><thead id="bench-head"></thead><tbody id="bench-body"></tbody></table></div>

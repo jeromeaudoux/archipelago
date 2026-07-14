@@ -121,6 +121,12 @@ body {
   font: inherit; font-size: clamp(16px, 2.2vw, 20px); padding: 17px 0; outline: none;
 }
 .searchbar input::placeholder { color: var(--muted); }
+.clearbtn { flex: 0 0 auto; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%;
+  background: transparent; color: var(--muted); cursor: pointer; display: grid; place-items: center; }
+.clearbtn:hover { background: var(--surface); color: var(--ink); }
+.clearbtn svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; fill: none; }
+.searchbar.mini .clearbtn { width: 22px; height: 22px; }
+.searchbar.mini .clearbtn svg { width: 13px; height: 13px; }
 
 .suggest {
   position: absolute; top: calc(100% + 8px); left: 0; right: 0; z-index: 20;

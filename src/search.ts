@@ -13,6 +13,24 @@ export function attachAutocomplete(
 
   const upper = (s: string) => s.toUpperCase();
 
+  // Clear (×) button
+  const clearBtn = document.createElement("button");
+  clearBtn.type = "button";
+  clearBtn.className = "clearbtn";
+  clearBtn.setAttribute("aria-label", "Clear search");
+  clearBtn.innerHTML =
+    `<svg viewBox="0 0 24 24" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>`;
+  clearBtn.hidden = true;
+  input.insertAdjacentElement("afterend", clearBtn);
+  const syncClear = () => { clearBtn.hidden = input.value.length === 0; };
+  clearBtn.addEventListener("click", () => {
+    input.value = "";
+    matches = []; active = -1;
+    close(); syncClear();
+    input.dispatchEvent(new Event("input"));
+    input.focus();
+  });
+
   function rank(q: string): GeneEntry[] {
     const idx = getIndex();
     if (!q) return [];
@@ -58,6 +76,7 @@ export function attachAutocomplete(
     matches = rank(input.value.trim());
     active = matches.length ? 0 : -1;
     render();
+    syncClear();
   });
 
   input.addEventListener("keydown", (e) => {

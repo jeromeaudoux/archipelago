@@ -203,6 +203,15 @@ function init(): void {
     if (t.closest(".theme-toggle")) { toggleTheme(); return; }
   });
 
+  // Global Escape: close whichever detail modal is open.
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    const bm = document.getElementById("bench-modal");
+    if (bm && bm.firstElementChild) { bm.innerHTML = ""; return; }
+    const cv = document.getElementById("cv-modal");
+    if (cv && !(cv as HTMLElement).hidden) { (cv as HTMLElement).hidden = true; }
+  });
+
   window.addEventListener("popstate", route);
   loadIndex();
   route();
