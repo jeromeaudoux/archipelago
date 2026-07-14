@@ -39,7 +39,10 @@ specificity. A residue-level **error analysis** shows the divergence from expert
 is systematic and interpretable: two-thirds of false negatives are genuine ClinVar
 pathogenic hotspots whose AlphaMissense signal falls just below the island threshold, and
 nearly half of false positives are dense pathogenic hotspots that experts simply have not
-yet curated. Because islands are orthogonal to ClinVar, they support a **graded PM1**
+yet curated. We further show that PM1 is a label expert panels themselves apply
+inconsistently to neighbouring variants — even at the identical codon within a single
+refined-guideline VCEP — underscoring the need for a reproducible definition. Because
+islands are orthogonal to ClinVar, they support a **graded PM1**
 (Supporting → Moderate → Strong) from cumulative island + in-island ClinVar evidence,
 designed to avoid double-counting with PP3. We release the generation script, a
 genome-wide BED resource (GRCh38/GRCh37), and **Archipelago**, an interactive browser
@@ -279,6 +282,48 @@ in_island; test in_island after controlling for the point estimate].
 SHANK3/Q9BYB0) or lack a MANE-Select overlap (~1,955 UniProt entries); these are reported
 as a limitation.
 
+### 3.5 Expert PM1 is itself only moderately reproducible
+
+Our benchmark treats expert-panel PM1 as ground truth, so its own consistency bounds what
+any method can achieve. We therefore asked how reproducibly ClinGen VCEPs apply PM1 to
+*neighbouring* missense variants. Scanning 5,381 curated missense variants in the eRepo
+export (1,006 with PM1 met), we searched — within the **same gene and same Expert Panel** —
+for pairs where PM1 was applied to one variant and, on a near neighbour, **explicitly
+recorded as not met**, restricting to pairs in which **both** variants are Pathogenic or
+Likely Pathogenic so that PM1's applicability is genuinely comparable (Table 3, full list
+in Supplementary Table S1).
+
+Such discordance is common and occurs at very short range: **15 pairs at the identical
+codon** (5 genes, 4 VCEPs), **104 within ±5 aa** (13 genes, 11 VCEPs) and **190 within
+±10 aa** (18 genes, 13 VCEPs). The same-codon cases are the clearest: the RASopathy VCEP
+applies PM1 to SOS1 R552T/K/M/W/G but explicitly withholds it from R552S; the TP53 VCEP
+applies PM1 to R337C/P/L but not R337G; the Cardiomyopathy VCEP applies it to MYH7 R453H
+but not R453S. Adjacent-residue examples are equally telling — FBN1 Y1186C (PM1 met) beside
+G1185D (PM1 not met), or HNF4A R112 (met) two residues from R114 (not met), both pathogenic
+in the Monogenic Diabetes / FBN1 panels. Relaxing the negative to "PM1 simply absent" (Tier
+2) yields 235 discordant pairs within ±5 aa across 30 genes.
+
+**Table 3. Inter-expert PM1 discordance (same VCEP, both P/LP, PM1 met vs. explicitly not
+met).**
+
+| Gene | Expert Panel | PM1 applied | PM1 explicitly not met | Δ aa |
+|---|---|---|---|---:|
+| SOS1 | RASopathy VCEP | R552T (P) | R552S (P) | 0 |
+| TP53 | TP53 VCEP | R337C (P) | R337G (LP) | 0 |
+| MYH7 | Cardiomyopathy VCEP | R453H (P) | R453S (P) | 0 |
+| FBN1 | FBN1 VCEP | Y1186C (P) | G1185D (LP) | 1 |
+| HNF4A | Monogenic Diabetes VCEP | R112W (P) | R114W (LP) | 2 |
+| TP53 | TP53 VCEP | R110P (P) | S106R (P) | 4 |
+
+Because these panels operate from *refined, gene-specific* ACMG specifications, the
+divergence is not a failure of expertise but evidence that PM1 — as currently defined —
+resists reproducible application even by its most qualified users. Two consequences follow.
+First, part of the residual disagreement in §3.2 (notably the sub-threshold-hotspot false
+negatives) is measured against a ground truth that is itself noisy at the residue level.
+Second, it strengthens the case for a **criterion-independent, reproducible** regional
+definition: a variant either falls in an AlphaMissense island or it does not, identically
+for every substitution at a codon and for every gene, curated or not. [CITE:tp53vcep]
+
 ## 4. Application: grading PM1 by cumulative evidence
 
 Island membership (a structural/predictive hotspot signal) is combined with in-island
@@ -310,6 +355,12 @@ based), islands are prediction-based and independent of cohort size; the two are
 complementary and could be combined. [CITE:rmc] The error analysis shows islands behave as
 a high-specificity criterion, with a recall gap that is quantitatively attributable to
 sub-threshold AlphaMissense signal.
+
+**Ground truth is itself noisy.** Expert panels apply PM1 inconsistently to neighbouring
+variants — even at the same codon and within a single VCEP with refined gene-specific rules
+(§3.5). Our benchmark metrics are therefore measured against a label that carries real
+residue-level noise, which both caps achievable recall and further motivates a
+reproducible, criterion-independent island definition.
 
 **Limitations & risks.** PP3/PM1 double-counting (§C2), evidence-strength calibration
 (§C3), the benchmark ground-truth definition, parameter robustness (§H1), isoform/coverage
@@ -415,4 +466,4 @@ and prior-art/novelty verdict in `REFERENCES.md`.*
 
 ## Author contributions
 
-Jérôme Audoux, Jon B. [surname/affiliations TBD], et al. — SeqOne.
+Jérôme Audoux, Jon B. [surname/affiliations TBD], Thibaut Benquey, et al. — SeqOne.
