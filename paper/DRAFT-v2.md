@@ -251,7 +251,7 @@ coverage limitation.
 ### 3.2 PM1 performance vs. existing tools
 
 On the expert-curated benchmark, island-based PM1 is far more **specific** than
-window-based classifiers (Table 2): 0.70 precision vs. 0.33 (Franklin) and 0.19
+window-based classifiers (Fig. 3A, Table 2): 0.70 precision vs. 0.33 (Franklin) and 0.19
 (InterVar), at the best overall F1 (0.59). Window/domain tools reach high recall by
 flagging broad regions at a large precision cost. [CITE:intervar]
 
@@ -272,7 +272,7 @@ variants; 1,488 with PM1 applied by either side) the engine records 618 TP, 266 
 
 Rather than treat every disagreement with experts as noise, we categorise all 266 false
 positives and 604 false negatives from their AlphaMissense/ClinVar neighbourhood
-(Fig. 3, Table 3). Full category definitions and per-gene counts are given in
+(Fig. 3B, Table 3). Full category definitions and per-gene counts are given in
 Supplementary Table S2 and are browsable in the live PM1 benchmark explorer.
 
 **False negatives are dominated by sub-threshold hotspots.** Of 604 FN, **403 (67 %)**
