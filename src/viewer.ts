@@ -257,6 +257,11 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
     { id: "v-heat", h: HEAT, label: "" },
     { id: "v-axb", h: AXIS, label: "Residue" },
   ];
+  const laneCV = LANES.find((l) => l.id === "v-cv")!;
+  // ClinVar lollipops feel cramped when zoomed in; scale the whole lane (height +
+  // lollipop geometry) with the zoom level, up to CV_ZMAX×.
+  const CV_ZMAX = 2.4;
+  const cvZoom = () => Math.min(CV_ZMAX, Math.max(1, colW / 4));
   const dpr = Math.max(1, window.devicePixelRatio || 1);
   let colW = 1;
   let LUT = rampLUT();
@@ -343,25 +348,26 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
     ctx.strokeStyle = css("--score-stroke"); ctx.lineWidth = 1.2; ctx.stroke();
   }
 
-  function lolli(ctx: CanvasRenderingContext2D, x: number, mid: number, r: number, up: boolean, color: string, ext = 0): void {
-    const y = up ? mid - 6 - r - ext : mid + 6 + r + ext;
-    ctx.strokeStyle = css("--muted"); ctx.globalAlpha = 0.5; ctx.lineWidth = 1;
+  function lolli(ctx: CanvasRenderingContext2D, x: number, mid: number, r: number, up: boolean, color: string, ext = 0, scale = 1): void {
+    const y = up ? mid - 6 * scale - r - ext : mid + 6 * scale + r + ext;
+    ctx.strokeStyle = css("--muted"); ctx.globalAlpha = 0.5; ctx.lineWidth = Math.max(1, scale);
     ctx.beginPath(); ctx.moveTo(x, mid); ctx.lineTo(x, y); ctx.stroke(); ctx.globalAlpha = 1;
     ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill();
     ctx.strokeStyle = css("--panel"); ctx.lineWidth = 1; ctx.stroke();
   }
   const STAR_EXT = 4;  // stem length added per ClinVar gold star (0..4)
   function drawClinvar(): void {
-    const ctx = ctxFor("v-cv", CVH); const mid = CVH / 2;
+    const H = laneCV.h, zf = cvZoom();
+    const ctx = ctxFor("v-cv", H); const mid = H / 2;
     ctx.strokeStyle = css("--grid"); ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(0, mid + 0.5); ctx.lineTo(contentW(), mid + 0.5); ctx.stroke();
-    const rad = (n: number) => 2.2 + Math.min(n - 1, 4) * 0.5;
+    const rad = (n: number) => (2.2 + Math.min(n - 1, 4) * 0.5) * zf;
     const pr: Record<string, number> = { P: 0, PLP: 1, LP: 2 };
     [...b.clinvar].sort((a, c) => pr[a.sig] - pr[c.sig]).reverse().forEach((v) =>
-      lolli(ctx, X(v.p) + Math.max(colW / 2, 0.5), mid, rad(v.n), true, CVCOL[v.sig], (v.st || 0) * STAR_EXT));
+      lolli(ctx, X(v.p) + Math.max(colW / 2, 0.5), mid, rad(v.n), true, CVCOL[v.sig], (v.st || 0) * STAR_EXT * zf, zf));
     const br: Record<string, number> = { B: 0, BLB: 1, LB: 2 };
     [...b.clinvar_benign].sort((a, c) => br[a.sig] - br[c.sig]).reverse().forEach((v) =>
-      lolli(ctx, X(v.p) + Math.max(colW / 2, 0.5), mid, rad(v.n), false, CVCOL[v.sig], (v.st || 0) * STAR_EXT));
+      lolli(ctx, X(v.p) + Math.max(colW / 2, 0.5), mid, rad(v.n), false, CVCOL[v.sig], (v.st || 0) * STAR_EXT * zf, zf));
   }
   function islandColor(i: Island): string {
     const plp = i.plp || 0, blb = i.blb || 0;
@@ -466,6 +472,8 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
     const w = contentW();
     stack.style.width = w + "px";
     ($("v-z") as HTMLInputElement).value = String(colW);
+    laneCV.h = Math.round(CVH * cvZoom());   // keep gutter + canvas in sync with zoom
+    buildGutter();
     drawHeat(); drawScore(); drawClinvar(); drawIsl(); drawDom();
     if (hasHot) drawHotspots();
     if (hasRmc) drawRmc();
@@ -669,11 +677,11 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
   scroll.addEventListener("mousemove", onMove);
   scroll.addEventListener("mouseup", endDrag);
   scroll.addEventListener("mouseleave", (e) => { if (dragX !== null) endDrag(e); else onLeave(); });
-  function fit(): void { colW = Math.max(0.35, (scroll.clientWidth - 2) / N); buildGutter(); drawAll(); scroll.scrollLeft = 0; }
+  function fit(): void { colW = Math.max(0.35, (scroll.clientWidth - 2) / N); drawAll(); scroll.scrollLeft = 0; }
   $("v-fit").addEventListener("click", fit);
   $("v-png").addEventListener("click", exportPNG);
   ($("v-z") as HTMLInputElement).addEventListener("input", (e) => {
-    colW = parseFloat((e.target as HTMLInputElement).value); buildGutter(); drawAll();
+    colW = parseFloat((e.target as HTMLInputElement).value); drawAll();
   });
   let rt: number | undefined;
   const onResize = () => { window.clearTimeout(rt); rt = window.setTimeout(drawAll, 150); };
