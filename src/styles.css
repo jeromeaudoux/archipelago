@@ -327,7 +327,11 @@ a.ghost { display: inline-flex; align-items: center; text-decoration: none; }
 .bench-table thead th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
 .bench-table .win td { font-weight: 700; color: var(--ink); }
 .bench-table .win { background: var(--accent-weak); }
-.bench-table .tag { font-weight: 500; font-size: 11px; color: var(--accent); background: var(--panel); border: 1px solid var(--border); border-radius: 20px; padding: 1px 7px; margin-left: 6px; }
+.bench-table .tag { display: inline-block; white-space: nowrap; font-weight: 500; font-size: 11px; color: var(--accent); background: var(--panel); border: 1px solid var(--border); border-radius: 20px; padding: 1px 7px; margin-left: 6px; }
+.bench-table td:first-child { white-space: nowrap; }
+.bench-cta { margin: 6px 0 4px; }
+.bench-cta a { color: var(--accent); text-decoration: none; font-weight: 600; font-size: 15px; }
+.bench-cta a:hover { text-decoration: underline; }
 .bench-fig { flex: 1 1 320px; margin: 0; }
 .bench-fig img { width: 100%; max-width: 460px; border: 1px solid var(--border); border-radius: 10px; background: #fff; }
 .bench-fig figcaption { font-size: 12px; color: var(--muted); margin-top: 6px; }

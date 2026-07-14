@@ -141,6 +141,9 @@ export function methodsHTML(): string {
       regions as hot-spots); the island approach trades a little recall for far fewer false
       positives — the right trade-off for an ACMG <i>moderate</i> criterion.
     </p>
+    <p class="bench-cta"><a href="?page=benchmark" data-benchmark>Explore every PM1 call (TP / FP / FN) →</a></p>
+
+    <p class="src">Cancer-hotspot track: cancerhotspots.org (Chang et al., 2018).</p>
 
     <p class="back"><a href="?page=methods" data-home>← Back to search</a></p>
   </article>`;
