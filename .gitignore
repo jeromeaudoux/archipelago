@@ -8,3 +8,4 @@ scripts/*.log
 # Raw source datasets are large and live outside the repo — never commit them.
 data_raw/
 scripts/.uniprot_map.json
+explore/.orth_cache.pkl

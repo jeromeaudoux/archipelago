@@ -319,10 +319,26 @@ strata — the profile of a specific, honest criterion rather than a broad, over
 C-terminal island reads benign (blue); *PTEN* localises to the phosphatase hotspot; *TP53*
 and *BRCA1* (Fig. 4) show tall, star-weighted expert-panel lollipops concentrated in the
 DNA-binding and RING/BRCT regions the corresponding VCEPs treat as PM1 territory.
-[CITE:tp53vcep][CITE:pten] A formal orthogonality analysis — does island membership add
-PM1-relevant signal *beyond the variant's own AlphaMissense/PP3 score* — is required to
-defuse double-counting and is reported in §C2 [logistic model: pathogenic ~ variant_AM +
-in_island; test in_island after controlling for the point estimate].
+[CITE:tp53vcep][CITE:pten]
+
+**Islands are orthogonal to per-variant PP3 predictors (Fig. 5).** The key objection to using
+an AlphaMissense-derived island for PM1 is double-counting with PP3. We therefore asked, on
+3,133 ClinVar-labelled missense variants (1,244 P/LP, 1,889 B/LB) scored with AlphaMissense,
+REVEL and CADD: *at a fixed per-variant score, does island membership still change the odds of
+pathogenicity?* Within predictor deciles, in-island variants are markedly enriched for
+pathogenicity over out-of-island variants at the same score (Fig. 5). The Cochran–Mantel–
+Haenszel common odds ratio for island membership, conditioning on the per-variant score, is
+**4.97 (95 % gene-cluster CI 3.05–8.55) against REVEL** and **5.04 (3.27–7.99) against CADD**
+(gene-cluster-robust logistic β = 1.63 and 1.65; p = 7×10⁻⁹ and 1×10⁻¹⁴; VIF ≈ 1.1). Because
+REVEL and CADD are the PP3 sources deployed in practice, **co-applying PM1 (island) with PP3 is
+not double-counting** — the regional signal is non-redundant. Conditioned on **AlphaMissense
+itself**, however, island membership adds no significant signal (OR 1.33, 95 % CI 0.77–2.34,
+p = 0.09): the island is essentially a smoothed restatement of the per-residue AM score (this
+doubles as the islands-vs-plain-threshold ablation). The rule that follows is explicit — PM1
+from AM islands may be co-applied with PP3 **only when PP3 is not itself AlphaMissense**;
+pairing it with an AM-based PP3 would double-count and must be avoided or capped. `in_island`
+is binary genomic membership (not `island_mean_score`), so the focal residue never enters the
+covariate and VIF stays ≈ 1, avoiding the leave-one-out collinearity trap.
 
 ### 3.5 Expert PM1 is itself only moderately reproducible
 
@@ -433,9 +449,10 @@ strength once a revised specification exists, rather than remaining a heuristic.
 islands as a calibration-ready, criterion-independent substrate for whichever PM1 (or
 PM1/PM5) definition the revision adopts.
 
-**Limitations & risks.** PP3/PM1 double-counting (§C2), evidence-strength calibration
-(§C3), the benchmark ground-truth definition, parameter robustness (§H1), isoform/coverage
-handling, and data licensing.
+**Limitations & risks.** PP3/PM1 double-counting is addressed (§3.4) with a concrete
+co-application rule — safe against REVEL/CADD, not against an AM-based PP3; remaining items
+are evidence-strength calibration (§C3), the benchmark ground-truth definition, parameter
+robustness (§H1), isoform/coverage handling, and data licensing.
 
 ## 6. Data & code availability
 
@@ -453,8 +470,10 @@ handling, and data licensing.
 ## Open items (prioritised)
 
 **Critical** — C1 finalise the ground-truth description (done: ClinGen eRepo expert PM1
-calls, matched by ClinVar ID); C2 orthogonality-beyond-PP3 analysis + a co-application
-rule; C3 OddsPath calibration or "proposed framework" labelling. **High** — H1 parameter
+calls, matched by ClinVar ID); C2 orthogonality-beyond-PP3 (**done, §3.4/Fig. 5**: island
+membership adds ~5× pathogenicity odds over REVEL/CADD but nothing over AlphaMissense itself
+→ co-apply PM1 with PP3 only when PP3 is not AM); C3 OddsPath calibration or "proposed
+framework" labelling. **High** — H1 parameter
 justification + train/test split + sensitivity sweep (resolve docstring "≥11" vs argparse
 "35"); H2 pLDDT-mask ablation + which BED released; H3 comparator method/versions; H4 CIs
 + paired test. **Medium** — hg19 provenance; isoform handling; coverage; RMC agreement;
