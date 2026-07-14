@@ -535,10 +535,62 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
 
   function exportPNG(): void {
     const S = 2;                       // supersample for crisp text
-    const GUT = 110, HEADER = 64, LEGEND = 24, FOOT = 20, PAD = 16;
+    const GUT = 110, HEADER = 64, FOOT = 20, PAD = 16;
     const w = contentW();
     const lanesH = LANES.reduce((s, l) => s + l.h, 0);
     const W = GUT + w + PAD;
+
+    // Legend mirrors the on-screen one, including the conditional tracks; it wraps
+    // to as many rows as the export width needs so nothing is clipped.
+    const legendEntries: { kind: string; col?: string; label: string }[] = [
+      { kind: "grad", label: "AM score 0→1" },
+      { kind: "square", col: css("--reference"), label: "Reference" },
+      { kind: "dot", col: css("--cv-p"), label: "ClinVar P/LP ↑" },
+      { kind: "dot", col: css("--cv-blb"), label: "B/LB ↓" },
+      { kind: "dot", col: css("--isl-path"), label: "island: P-rich" },
+      { kind: "dot", col: css("--isl-benign"), label: "B-rich" },
+      { kind: "dot", col: css("--isl-none"), label: "no ClinVar" },
+      { kind: "square", col: css("--domain"), label: "Domain" },
+      ...(hasHot ? [{ kind: "diamond", col: css("--hotspot"), label: "Cancer hotspot" }] : []),
+      ...(hasRmc ? [{ kind: "rmc", col: css("--rmc"), label: "Missense-constrained (low o/e)" }] : []),
+    ];
+    const LEG_FONT = "11px ui-sans-serif,system-ui";
+    const SW = 13, SWGAP = 6, ENTRY_GAP = 18, ROW_H = 18;
+    function layoutLegend(c: CanvasRenderingContext2D, y0: number, maxX: number, draw: boolean): number {
+      c.font = LEG_FONT; c.textBaseline = "middle"; c.textAlign = "left";
+      let x = PAD, row = 0;
+      for (const e of legendEntries) {
+        const swW = e.kind === "grad" ? 44 : SW;
+        const tw = c.measureText(e.label).width;
+        const need = swW + SWGAP + tw;
+        if (x + need > maxX && x > PAD) { row++; x = PAD; }
+        const cy = y0 + row * ROW_H + ROW_H / 2;
+        if (draw) {
+          if (e.kind === "grad") {
+            const g = c.createLinearGradient(x, 0, x + 44, 0);
+            g.addColorStop(0, css("--am0")); g.addColorStop(0.5, css("--am2")); g.addColorStop(1, css("--am4"));
+            c.fillStyle = g; c.fillRect(x, cy - 5.5, 44, 11);
+          } else if (e.kind === "dot") {
+            c.fillStyle = e.col!; c.beginPath(); c.arc(x + SW / 2, cy, 5, 0, 6.2832); c.fill();
+          } else if (e.kind === "diamond") {
+            c.fillStyle = e.col!; c.save(); c.translate(x + SW / 2, cy); c.rotate(Math.PI / 4);
+            c.fillRect(-4.5, -4.5, 9, 9); c.restore();
+          } else if (e.kind === "rmc") {
+            const g = c.createLinearGradient(x, 0, x + SW, 0);
+            g.addColorStop(0, css("--panel")); g.addColorStop(1, e.col!);
+            c.fillStyle = g; c.fillRect(x, cy - 5.5, SW, 11);
+          } else {
+            c.fillStyle = e.col!; c.fillRect(x, cy - 5.5, SW, 11);
+          }
+          c.fillStyle = css("--muted"); c.fillText(e.label, x + swW + SWGAP, cy);
+        }
+        x += need + ENTRY_GAP;
+      }
+      return row + 1;
+    }
+    const measure = document.createElement("canvas").getContext("2d")!;
+    const legendRows = layoutLegend(measure, 0, W - PAD, false);
+    const LEGEND = legendRows * ROW_H + 8;
     const H = HEADER + LEGEND + lanesH + FOOT + PAD;
     const out = document.createElement("canvas");
     out.width = W * S; out.height = H * S;
@@ -559,22 +611,8 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
       + `${b.islands.length} islands · ${b.clinvar.length} P/LP · ${b.clinvar_benign.length} B/LB`,
       PAD, 50);
 
-    // compact legend
-    let lx = PAD; const ly = HEADER + 4;
-    const grad = ctx.createLinearGradient(lx, 0, lx + 44, 0);
-    grad.addColorStop(0, css("--am0")); grad.addColorStop(0.5, css("--am2")); grad.addColorStop(1, css("--am4"));
-    ctx.fillStyle = grad; ctx.fillRect(lx, ly, 44, 11);
-    ctx.fillStyle = muted; ctx.font = "11px ui-sans-serif,system-ui"; ctx.textBaseline = "middle";
-    ctx.fillText("AM 0→1", lx + 50, ly + 6); lx += 118;
-    const chips: [string, string][] = [
-      [css("--cv-p"), "ClinVar P/LP ↑"], [css("--cv-blb"), "B/LB ↓"],
-      [css("--isl-path"), "island P-rich"], [css("--isl-benign"), "B-rich"], [css("--isl-none"), "no ClinVar"],
-    ];
-    for (const [col, label] of chips) {
-      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(lx + 5, ly + 6, 5, 0, 6.2832); ctx.fill();
-      ctx.fillStyle = muted; ctx.fillText(label, lx + 14, ly + 6);
-      lx += 16 + ctx.measureText(label).width + 16;
-    }
+    // legend (mirrors the on-screen one; wraps to fit the export width)
+    layoutLegend(ctx, HEADER + 4, W - PAD, true);
 
     // tracks + gutter
     let y = HEADER + LEGEND;
