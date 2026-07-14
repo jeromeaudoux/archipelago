@@ -14,7 +14,7 @@ export interface Bundle {
   /** cancerhotspots.org residue hotspots (present only for genes with entries). */
   hotspots?: { p: number; r: string; q?: number; n?: number; onc: number }[];
   /** gnomAD regional missense constraint: observed/expected per sub-region. */
-  rmc?: { s: number; e: number; oe: number; obs?: number; exp?: number; p?: number }[];
+  rmc?: { s: number; e: number; oe: number; obs?: number; exp?: number; p?: number; whole?: number }[];
 }
 
 const ICON: Record<string, string> = {
@@ -168,7 +168,7 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
         ${hasRmc ? `<div class="kpi">
           <div class="kpi-head">${ICON.constraint}<span>Missense o/e</span></div>
           <div class="kpi-n">${minOE!.toFixed(2)}</div>
-          <div class="kpi-sub">gnomAD region (min)</div>
+          <div class="kpi-sub">${b.rmc![0].whole ? "gnomAD gene-level" : "gnomAD region (min)"}</div>
         </div>` : ""}
       </div>
     </div>
@@ -375,16 +375,19 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
     const col = hexToRgb(css("--rmc"));
     for (const r of b.rmc!) {
       const x = X(r.s), w = (r.e - r.s + 1) * colW;
-      // more constrained (lower o/e) → darker/more opaque
-      const a = 0.15 + 0.7 * Math.max(0, Math.min(1, (0.85 - r.oe) / 0.85));
+      const constr = Math.max(0, Math.min(1, (0.85 - r.oe) / 0.85));
+      // gene-level (no sub-regional constraint) is drawn subtler than a real sub-region
+      const a = (r.whole ? 0.1 + 0.45 * constr : 0.15 + 0.7 * constr);
       ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},${a.toFixed(3)})`;
       ctx.fillRect(x, 4, Math.max(w, 1), RMC - 8);
       ctx.strokeStyle = "rgba(0,0,0,.12)"; ctx.lineWidth = 1;
+      if (r.whole) ctx.setLineDash([3, 3]);
       ctx.strokeRect(x + 0.5, 4.5, Math.max(w, 1), RMC - 9);
+      ctx.setLineDash([]);
       if (w > 40) {
         ctx.fillStyle = a > 0.5 ? "#fff" : css("--ink2");
         ctx.font = "10px ui-monospace,monospace"; ctx.textBaseline = "middle"; ctx.textAlign = "center";
-        ctx.fillText(r.oe.toFixed(2), x + w / 2, RMC / 2);
+        ctx.fillText(r.oe.toFixed(2) + (r.whole ? " · gene" : ""), x + w / 2, RMC / 2);
       }
     }
   }
@@ -476,7 +479,7 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
       + (cvp ? cvRow(cvp, p) : "") + (cvb ? cvRow(cvb, p) : "")
       + (hot ? `<div class="row"><span>Cancer hotspot</span><b>${hot.r}${hot.p}${hot.onc ? " · OncoKB" : ""}</b></div>`
         + `<div class="row"><span>&nbsp;cancerhotspots</span><b>${hot.n != null ? hot.n + " mutations" : ""}${hot.q != null ? ` · q=${hot.q.toExponential(1)}` : ""}</b></div>` : "")
-      + (rmc ? `<div class="row"><span>Missense o/e</span><b>${rmc.oe.toFixed(2)}${rmc.obs != null ? ` (${rmc.obs}/${rmc.exp} obs/exp)` : ""}</b></div>` : "")
+      + (rmc ? `<div class="row"><span>Missense o/e${rmc.whole ? " (gene)" : ""}</span><b>${rmc.oe.toFixed(2)}${rmc.obs != null ? ` (${rmc.obs}/${rmc.exp} obs/exp)` : ""}</b></div>` : "")
       + (dom ? `<div class="row"><span>Domain</span><b>${dom.name}</b></div>` : "")
       + (isl ? `<div class="row"><span>AM island</span><b>${isl.s}–${isl.e} (${isl.m.toFixed(2)})</b></div>`
         + `<div class="row"><span>&nbsp;in island</span><b>${isl.plp || 0} P/LP · ${isl.blb || 0} B/LB</b></div>` : "")

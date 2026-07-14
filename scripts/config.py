@@ -24,8 +24,10 @@ CLINVAR_VCF = os.path.join(
 MANE_SUMMARY = os.path.join(HOME, "Dev", "Data", "MANE.GRCh38.v1.3.summary.txt.gz")
 # cancerhotspots.org residue hotspots (hotspots_v3.xlsx, "Hotspot_Residues" sheet).
 CANCERHOTSPOTS_XLSX = os.path.join(HOME, "Downloads", "hotspots_v3.xlsx")
-# gnomAD v2.1.1 regional missense constraint (per-transcript sub-regions with o/e).
+# gnomAD v2.1.1 regional missense constraint.
 GNOMAD_RMC_TSV = os.path.join(HOME, "Downloads", "gnomAD_v2.1.1_transcripts_with_rmc.tsv")
+# ...and transcripts with no significant sub-regional constraint (gene-level o/e).
+GNOMAD_NO_RMC_TSV = os.path.join(HOME, "Downloads", "gnomAD_v2.1.1_transcripts_without_rmc.tsv")
 # ClinGen Evidence Repository export (PM1 benchmark ground truth).
 EREPO_TSV = os.path.join(HOME, "Documents", "benchmark_ACMG", "data", "erepo-tabbed.tsv")
 # acmgscore output on the eRepo set, scored WITH --am-islands (PM1_AM_* tags).
