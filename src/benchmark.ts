@@ -7,11 +7,12 @@ interface Row {
   g: string; v: string; c: string; hgvs: string; dis: string; panel: string; link: string;
   clinvar: string; assertion: string; met: string;
   truth: boolean; tstr: string; pred: boolean; pstr: string; pr: string; cat: "tp" | "fp" | "fn";
+  dcat?: string; pnear?: number; bnear?: number; idist?: number; dom?: boolean; amv?: number | null;
 }
 interface Data {
   summary: { tp: number; fp: number; fn: number; tn: number;
     precision: number; recall: number; f1: number; matched: number;
-    fn_not_missense: number; fn_no_island: number };
+    fn_not_missense: number; fn_no_island: number; dcats?: Record<string, number> };
   variants: Row[];
 }
 type LoadBundle = (gene: string) => Promise<Bundle>;
@@ -22,12 +23,59 @@ const CAT = {
   fn: { label: "False negative", cls: "fn" },
 };
 
+/** Honest, data-derived reasons an FP/FN diverges from ClinGen. */
+const DCAT: Record<string, { label: string; blurb: string; grp: "fp" | "fn" | "na" }> = {
+  fp_clinvar_hotspot: { grp: "fp", label: "ClinVar-supported hotspot",
+    blurb: "Region is dense with ClinVar pathogenic missense (≥3 within ±10 aa); ClinGen simply hasn’t curated PM1 here — a defensible call rather than a clear error." },
+  fp_am_only: { grp: "fp", label: "AlphaMissense-only island",
+    blurb: "AlphaMissense flags the region but little/no ClinVar pathogenic support — a genuine AM-versus-panel divergence." },
+  fp_benign_conflict: { grp: "fp", label: "Benign variants nearby",
+    blurb: "≥2 benign/LB variants sit in the region, weakening the hot-spot claim — the engine likely over-called." },
+  fn_subthreshold_hotspot: { grp: "fn", label: "Sub-threshold hotspot",
+    blurb: "A real ClinVar pathogenic hotspot (≥3 P/LP within ±10 aa) where the AlphaMissense signal wasn’t strong enough to form an island — the dominant source of misses." },
+  fn_near_island: { grp: "fn", label: "Just outside an island",
+    blurb: "Residue lies ≤10 aa beyond an island boundary — a boundary-sensitivity miss." },
+  fn_weak_am: { grp: "fn", label: "Sparse evidence",
+    blurb: "Little ClinVar and sub-island AM here; the panel likely used non-AM evidence (functional assays, specific-codon rules) the island method can’t see." },
+  fn_not_missense: { grp: "fn", label: "Not missense (by design)",
+    blurb: "Frameshift / nonsense / splice / non-single-residue — PM1 is a missense criterion, so PM1_AM is correctly not applied." },
+  unmapped: { grp: "na", label: "Isoform-ambiguous",
+    blurb: "Maps to a different isoform than the AlphaMissense canonical sequence, so its neighbourhood can’t be characterised reliably." },
+};
+const DCAT_ORDER = ["fp_clinvar_hotspot", "fp_am_only", "fp_benign_conflict",
+  "fn_subthreshold_hotspot", "fn_near_island", "fn_weak_am", "fn_not_missense"];
+
 export function renderBenchmark(root: HTMLElement, data: Data, loadBundle: LoadBundle): void {
   const s = data.summary;
   let mode: "variant" | "gene" = "variant";
   let filter: "all" | "tp" | "fp" | "fn" = "all";
+  let dfilter: string | null = null;
   let query = "";
   let gsort = { key: "n", dir: -1 };
+
+  const dc = s.dcats || {};
+  function dcatColumn(title: string, grp: "fp" | "fn"): string {
+    const cats = DCAT_ORDER.filter((k) => DCAT[k].grp === grp && dc[k]);
+    const tot = cats.reduce((n, k) => n + dc[k], 0) || 1;
+    return `<div class="dcol"><h3 class="dcol-h ${grp}">${title}</h3>${cats.map((k) => {
+      const n = dc[k], p = Math.round((n / tot) * 100);
+      return `<button class="dcat" data-dcat="${k}">
+        <span class="dcat-top"><span class="dcat-n ${grp}">${n}</span><span class="dcat-l">${DCAT[k].label}</span><span class="dcat-pct">${p}%</span></span>
+        <span class="dcat-track"><span class="dcat-fill ${grp}" style="width:${p}%"></span></span>
+        <span class="dcat-blurb">${DCAT[k].blurb}</span></button>`;
+    }).join("")}</div>`;
+  }
+  const dcatBreakdown = () => `
+    <details class="dbreak" open>
+      <summary class="dbreak-sum">Where do the engine and ClinGen diverge?
+        <span class="muted">— an honest categorisation of every FP and FN; click one to filter the table</span></summary>
+      <div class="dcols">
+        ${dcatColumn("False positives — engine applied PM1, ClinGen didn’t", "fp")}
+        ${dcatColumn("False negatives — ClinGen applied PM1, engine didn’t", "fn")}
+      </div>
+      ${dc.unmapped ? `<p class="dcat-note"><b>${dc.unmapped}</b> further variant${dc.unmapped === 1 ? " is" : "s are"} isoform-ambiguous
+        (mapped to a different isoform than the AlphaMissense canonical sequence) and left uncategorised.</p>` : ""}
+    </details>`;
 
   // per-gene aggregates
   const geneAgg = new Map<string, { tp: number; fp: number; fn: number }>();
@@ -57,6 +105,8 @@ export function renderBenchmark(root: HTMLElement, data: Data, loadBundle: LoadB
         <div class="btile stat"><span class="bt-n">${s.f1.toFixed(2)}</span><span class="bt-l">F1</span></div>
       </div>
 
+      ${dcatBreakdown()}
+
       <div class="bench-controls">
         <div class="bmode">
           <button class="bmodebtn on" data-m="variant">By variant</button>
@@ -76,11 +126,9 @@ export function renderBenchmark(root: HTMLElement, data: Data, loadBundle: LoadB
       <p class="bench-caveat">Prediction = the engine's <span class="mono">acmg_tags_v2</span> PM1 state
         (AlphaMissense-island overlap). Ground truth = PM1 (any strength) in the eRepo “Applied Evidence
         Codes (Met)”, matched by ClinVar ID and compared strength-independently, exactly as in
-        <span class="mono">benchmark_acmg.py</span>.
-        Of the ${s.fn} false negatives, <b>${s.fn_not_missense}</b> are non-missense variants
-        (frameshift / nonsense / splice) that PM1 — a missense hot-spot criterion — is not applied to
-        (shown as <span class="pm1badge na">N/A · not missense</span>); the other ${s.fn_no_island}
-        are missense residues outside any island.</p>
+        <span class="mono">benchmark_acmg.py</span>. Divergence categories above are derived from each
+        variant’s AlphaMissense neighbourhood (island overlap, ClinVar P/LP and B/LB density within
+        ±10 aa) and are descriptive, not a re-scoring.</p>
       <div id="bench-modal"></div>
     </div>`;
 
@@ -99,12 +147,22 @@ export function renderBenchmark(root: HTMLElement, data: Data, loadBundle: LoadB
     : `<span class="pm1badge off">not met</span>`;
   const geneLink = (g: string) => `<a href="?gene=${g}" data-gene-link="${g}" class="blink bg">${g}</a>`;
 
+  const dcatCell = (r: Row): string => {
+    if (r.cat === "tp" || !r.dcat) return `<span class="muted">—</span>`;
+    const meta = DCAT[r.dcat];
+    if (!meta) return `<span class="muted">—</span>`;
+    const near = r.pnear != null
+      ? ` — ${r.pnear} P/LP · ${r.bnear} B/LB within ±10 aa${r.amv != null ? ` · AM ${r.amv}` : ""}` : "";
+    return `<span class="dpill ${meta.grp}" title="${meta.blurb}${near}">${meta.label}</span>`;
+  };
+
   function renderVariantTable(): void {
     head.innerHTML = `<tr><th>Gene</th><th>Variant</th><th>Disease</th>
-      <th>ClinGen PM1</th><th>Engine PM1</th><th>Result</th></tr>`;
+      <th>ClinGen PM1</th><th>Engine PM1</th><th>Result</th><th>Why divergent</th></tr>`;
     const q = query.toLowerCase();
     view = data.variants.filter((r) =>
       (filter === "all" || r.cat === filter)
+      && (!dfilter || r.dcat === dfilter)
       && (!q || r.g.toLowerCase().includes(q) || (r.hgvs + r.v).toLowerCase().includes(q) || r.dis.toLowerCase().includes(q)));
     body.innerHTML = view.slice(0, 3000).map((r, i) => `<tr data-i="${i}">
       <td>${geneLink(r.g)}</td>
@@ -113,8 +171,10 @@ export function renderBenchmark(root: HTMLElement, data: Data, loadBundle: LoadB
       <td>${badge(r.tstr, r.truth)}</td>
       <td>${engineBadge(r)}</td>
       <td><span class="rescat ${CAT[r.cat].cls}">${CAT[r.cat].label}</span></td>
+      <td>${dcatCell(r)}</td>
     </tr>`).join("");
-    countEl.textContent = `${view.length.toLocaleString()} variant${view.length === 1 ? "" : "s"}`
+    const tag = dfilter && DCAT[dfilter] ? ` · ${DCAT[dfilter].label}` : "";
+    countEl.textContent = `${view.length.toLocaleString()} variant${view.length === 1 ? "" : "s"}${tag}`
       + (view.length > 3000 ? " (showing first 3,000)" : "");
   }
 
@@ -155,6 +215,12 @@ export function renderBenchmark(root: HTMLElement, data: Data, loadBundle: LoadB
   function render(): void { mode === "variant" ? renderVariantTable() : renderGeneTable(); }
 
   async function openModal(r: Row): Promise<void> {
+    const meta = r.dcat ? DCAT[r.dcat] : undefined;
+    const dline = meta && r.cat !== "tp" ? `<div class="bmodal-dcat ${meta.grp}">
+      <span class="dpill ${meta.grp}">${meta.label}</span>
+      <span class="bmodal-dblurb">${meta.blurb}${r.pnear != null
+        ? ` <span class="muted">(${r.pnear} P/LP · ${r.bnear} B/LB within ±10 aa${r.amv != null ? ` · AM mean ${r.amv}` : ""}${r.dom ? " · in domain" : ""})</span>` : ""}</span>
+    </div>` : "";
     const strip = `<div class="bmodal-strip">
       <span class="rescat ${CAT[r.cat].cls}">${CAT[r.cat].label}</span>
       <span class="bstrip-item">ClinGen: <b>${r.truth ? (r.tstr || "PM1") : "PM1 not applied"}</b> · ${r.assertion || "—"}</span>
@@ -162,7 +228,7 @@ export function renderBenchmark(root: HTMLElement, data: Data, loadBundle: LoadB
       <span class="bstrip-codes">${(r.met || "").split(",").map((c) => c.trim()).filter(Boolean)
         .map((c) => `<span class="code ${c.startsWith("PM1") ? "pm1" : ""}">${c}</span>`).join("")}</span>
       ${r.link ? `<a class="blink" href="${r.link}" target="_blank" rel="noopener">eRepo ↗</a>` : ""}
-    </div>`;
+    </div>${dline}`;
     modalHost.innerHTML = `<div class="modal-backdrop" data-close>
       <div class="modal bmodal-lg" role="dialog" aria-modal="true">
         <button class="modal-x bmodal-close" data-close aria-label="Close">×</button>
@@ -206,7 +272,7 @@ export function renderBenchmark(root: HTMLElement, data: Data, loadBundle: LoadB
     if (t.closest("a")) return;                       // gene link → let main.ts navigate
     if (mode === "gene") {
       const gtr = t.closest<HTMLElement>("tr[data-gene]");
-      if (gtr) { mode = "variant"; query = gtr.dataset.gene!; search.value = query;
+      if (gtr) { mode = "variant"; dfilter = null; query = gtr.dataset.gene!; search.value = query;
         root.querySelectorAll(".bmodebtn").forEach((b) => b.classList.toggle("on", (b as HTMLElement).dataset.m === "variant"));
         (root.querySelector("#bfilters") as HTMLElement).style.visibility = "visible";
         render(); }
@@ -222,18 +288,33 @@ export function renderBenchmark(root: HTMLElement, data: Data, loadBundle: LoadB
   });
   root.addEventListener("keydown", (e) => { if ((e as KeyboardEvent).key === "Escape") closeModal(); });
 
+  const syncChips = () => {
+    root.querySelectorAll(".bmodebtn").forEach((b) => b.classList.toggle("on", (b as HTMLElement).dataset.m === mode));
+    root.querySelectorAll(".bfilter").forEach((f) => f.classList.toggle("on", (f as HTMLElement).dataset.f === filter));
+    root.querySelectorAll(".dcat").forEach((d) => d.classList.toggle("on", (d as HTMLElement).dataset.dcat === dfilter));
+  };
   root.querySelectorAll<HTMLElement>(".bmodebtn").forEach((el) =>
     el.addEventListener("click", () => {
-      mode = (el.dataset.m as typeof mode) || "variant";
-      root.querySelectorAll(".bmodebtn").forEach((b) => b.classList.toggle("on", b === el));
+      mode = (el.dataset.m as typeof mode) || "variant"; dfilter = null;
+      syncChips();
       (root.querySelector("#bfilters") as HTMLElement).style.visibility = mode === "variant" ? "visible" : "hidden";
       render();
     }));
   root.querySelectorAll<HTMLElement>(".bfilter, .btile[data-f]").forEach((el) =>
     el.addEventListener("click", () => {
-      filter = (el.dataset.f as typeof filter) || "all"; mode = "variant";
-      root.querySelectorAll(".bmodebtn").forEach((b) => b.classList.toggle("on", (b as HTMLElement).dataset.m === "variant"));
-      root.querySelectorAll(".bfilter").forEach((f) => f.classList.toggle("on", (f as HTMLElement).dataset.f === filter));
+      filter = (el.dataset.f as typeof filter) || "all"; mode = "variant"; dfilter = null;
+      syncChips();
+      (root.querySelector("#bfilters") as HTMLElement).style.visibility = "visible";
+      render();
+    }));
+  root.querySelectorAll<HTMLElement>(".dcat").forEach((el) =>
+    el.addEventListener("click", () => {
+      const k = el.dataset.dcat!;
+      dfilter = dfilter === k ? null : k;                       // toggle
+      mode = "variant";
+      const grp = dfilter ? DCAT[dfilter].grp : null;
+      filter = grp === "fp" || grp === "fn" ? grp : "all";
+      syncChips();
       (root.querySelector("#bfilters") as HTMLElement).style.visibility = "visible";
       render();
     }));

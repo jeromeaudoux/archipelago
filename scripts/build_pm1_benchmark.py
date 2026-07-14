@@ -20,10 +20,86 @@ import json
 import os
 import re
 import sys
+from collections import Counter
 
 import config as C
 
 PVAR_RE = re.compile(r"\(p\.([A-Z][a-z]{2})(\d+)([A-Z][a-z]{2}|Ter|=)\)")
+VLETTER_RE = re.compile(r"^([A-Z])(\d+)([A-Z*=])$")
+CNUM_RE = re.compile(r"c\.(\d+)")
+
+# Window (± residues) used to characterise the ClinVar neighbourhood of a variant.
+WIN = 10
+
+
+def load_bundle(gene, cache):
+    if gene not in cache:
+        path = os.path.join(C.GENES_DIR, gene + ".json.gz")
+        b = None
+        if os.path.exists(path):
+            with gzip.open(path, "rt") as fh:
+                b = json.load(fh)
+        cache[gene] = b
+    return cache[gene]
+
+
+def variant_pos(row):
+    """(residue, ref_letter|None) from the 1-letter p. or, failing that, the c. HGVS."""
+    m = VLETTER_RE.match(row["v"])
+    if m:
+        return int(m.group(2)), m.group(1)
+    cm = CNUM_RE.search(row["c"])
+    if cm:
+        return (int(cm.group(1)) + 2) // 3, None
+    return None, None
+
+
+def enrich(row, cache):
+    """Attach an honest divergence category + supporting signals to an FP/FN row.
+
+    Signals come from the gene's AlphaMissense bundle (AM islands, per-residue
+    ClinVar P/LP and B/LB, mean AM, domains). The eRepo variant may sit on a
+    different isoform than the AM canonical bundle; when the reference amino acid
+    disagrees we mark the row `unmapped` rather than guess.
+    """
+    if row["cat"] == "fn" and row["pr"] == "notmiss":
+        row["dcat"] = "fn_not_missense"       # engine-authoritative, no bundle needed
+        return
+    b = load_bundle(row["g"], cache)
+    pos, refaa = variant_pos(row)
+    if b is None or pos is None or not (1 <= pos <= b["length"]):
+        row["dcat"] = "unmapped"
+        return
+    if refaa is not None and b["ref"][pos - 1] != refaa:
+        row["dcat"] = "unmapped"
+        return
+
+    islands = b.get("islands", [])
+    in_isl = any(i["s"] <= pos <= i["e"] for i in islands)
+    idist = 0 if in_isl else min(
+        (min(abs(pos - i["s"]), abs(pos - i["e"])) for i in islands), default=-1)
+    pnear = sum(1 for r in b["clinvar"] if abs(r["p"] - pos) <= WIN)
+    bnear = sum(1 for r in b["clinvar_benign"] if abs(r["p"] - pos) <= WIN)
+    mean = b.get("mean") or []
+    am = mean[pos - 1] if pos - 1 < len(mean) and mean[pos - 1] is not None else None
+    dom = any(d["s"] <= pos <= d["e"] for d in b.get("domains", []))
+    row.update({"pnear": pnear, "bnear": bnear, "idist": idist, "dom": dom,
+                "amv": round(am, 2) if am is not None else None})
+
+    if row["cat"] == "fp":
+        if bnear >= 2:
+            row["dcat"] = "fp_benign_conflict"
+        elif pnear >= 3:
+            row["dcat"] = "fp_clinvar_hotspot"
+        else:
+            row["dcat"] = "fp_am_only"
+    else:  # fn
+        if pnear >= 3:
+            row["dcat"] = "fn_subthreshold_hotspot"
+        elif 1 <= idist <= WIN:
+            row["dcat"] = "fn_near_island"
+        else:
+            row["dcat"] = "fn_weak_am"
 AA3 = {
     "Ala": "A", "Arg": "R", "Asn": "N", "Asp": "D", "Cys": "C", "Gln": "Q", "Glu": "E",
     "Gly": "G", "His": "H", "Ile": "I", "Leu": "L", "Lys": "K", "Met": "M", "Phe": "F",
@@ -119,17 +195,24 @@ def main():
                 "cat": cat,
             })
 
+    bundle_cache = {}
+    for r in rows:
+        if r["cat"] in ("fp", "fn"):
+            enrich(r, bundle_cache)
+
     tp, fp, fn = counts["tp"], counts["fp"], counts["fn"]
     prec = tp / (tp + fp) if tp + fp else 0
     rec = tp / (tp + fn) if tp + fn else 0
     f1 = 2 * prec * rec / (prec + rec) if prec + rec else 0
     fn_notmiss = sum(1 for r in rows if r["cat"] == "fn" and r["pr"] == "notmiss")
     fn_noisland = sum(1 for r in rows if r["cat"] == "fn" and r["pr"] == "noisland")
+    dcats = Counter(r["dcat"] for r in rows if r["cat"] in ("fp", "fn"))
     summary = {**counts, "precision": round(prec, 4), "recall": round(rec, 4),
                "f1": round(f1, 4), "matched": tp + fp + fn + counts["tn"],
                "n_rows": len(rows),
                "fn_not_missense": fn_notmiss, "fn_no_island": fn_noisland,
-               "fn_other": fn - fn_notmiss - fn_noisland}
+               "fn_other": fn - fn_notmiss - fn_noisland,
+               "dcats": dict(dcats)}
     rows.sort(key=lambda x: (x["cat"], x["g"], x["hgvs"]))
     os.makedirs(C.DATA_DIR, exist_ok=True)
     with open(C.PM1_BENCHMARK_JSON, "w") as fh:
