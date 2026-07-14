@@ -138,36 +138,76 @@ def main():
         print(f"{s:18} {lr:7.2f} [{lo:6.2f},{hi:6.2f}] {p:6d} {bn:6d}   {strg}")
         rows.append((s, lr, lo, hi, p, bn, strg))
 
-    # ---- figure: LR per stratum (log scale) with ACMG strength thresholds ----
+    # ---------------------------------------------------------------- figure
     plt.rcParams.update({"font.family": "DejaVu Sans", "font.size": 9,
                          "axes.spines.top": False, "axes.spines.right": False,
-                         "axes.linewidth": 0.7, "axes.edgecolor": "#3a4652",
-                         "svg.fonttype": "none"})
-    show = [r for r in rows if r[0] != "outside"]
-    fig, ax = plt.subplots(figsize=(8.2, 4.2))
-    xs = np.arange(len(show))
-    lrs = np.array([r[1] for r in show])
-    lo = np.array([r[2] for r in show]); hi = np.array([r[3] for r in show])
-    cols = ["#8999aa" if r[0] == "island+benign" else "#b11949" for r in show]
-    for name, y in THRESH.items():
-        ax.axhline(y, ls="--", lw=0.8, color="#c7ccd4", zorder=0)
-        ax.text(len(show) - 0.45, y * 1.02, name, fontsize=8, color="#8999aa", va="bottom", ha="right")
-    ax.errorbar(xs, lrs, yerr=[lrs - lo, hi - lrs], fmt="none", ecolor="#c7ccd4", lw=1.4, zorder=2)
-    ax.scatter(xs, lrs, s=46, c=cols, zorder=3, edgecolor="white", linewidth=0.7)
-    for x, r in zip(xs, show):
-        ax.annotate(f"{r[1]:.1f}", (x, r[3]), textcoords="offset points", xytext=(0, 5),
-                    ha="center", fontsize=8, color="#1c212c")
-    ax.axhline(1.0, color="#3a4652", lw=0.8)
-    ax.set_yscale("log")
-    ax.set_xticks(xs)
-    ax.set_xticklabels([r[0].replace("island ", "").replace("+benign", "+ benign") for r in show],
-                       rotation=20, ha="right", fontsize=8.5)
-    ax.set_ylabel("Likelihood ratio for pathogenicity (log scale)")
-    ax.set_xlabel("AM-island context (leave-one-out ClinVar corroboration)")
-    ax.set_title("Graded PM1 calibration: in-island ClinVar corroboration lifts the likelihood "
-                 "ratio\nfrom Supporting to Strong; benign-contradicted islands are downweighted",
-                 fontsize=10, fontweight="bold", color="#1c212c")
-    fig.tight_layout()
+                         "axes.spines.left": False, "axes.linewidth": 0.7,
+                         "axes.edgecolor": "#c7ccd4", "svg.fonttype": "none"})
+    R = {s: (base[s][0], ci[s][0], ci[s][1], base[s][1], base[s][2]) for s in STRATA}
+    dose = ["island 0 P/LP", "island 1 P/LP", "island 2–4 P/LP", "island 5–9 P/LP", "island ≥10 P/LP"]
+    dlab = ["0", "1", "2–4", "5–9", "≥10"]
+    ramp = ["#f2789f", "#e0518a", "#c93370", "#ab1a4d", "#7d0d33"]  # light→dark (dose)
+    INK, MUT = "#1c212c", "#8999aa"
+    xdose = np.arange(len(dose)) + 2.0       # dose series at x = 2..6
+    x_out, x_ben = 0.0, 0.9                    # reference markers
+
+    fig, ax = plt.subplots(figsize=(9.2, 5.0))
+    YB, YT = 0.62, 165
+    # ACMG strength bands (background)
+    bands = [(YB, THRESH["Supporting"], "#eff1f4", "not met", "#8999aa"),
+             (THRESH["Supporting"], THRESH["Moderate"], "#fbe9dc", "Supporting", "#b07627"),
+             (THRESH["Moderate"], THRESH["Strong"], "#f7d9c0", "Moderate", "#bd6224"),
+             (THRESH["Strong"], YT, "#f6ccd3", "Strong", "#a5273f")]
+    xr = 5.15
+    for y0, y1, fc, name, tc in bands:
+        ax.axhspan(y0, y1, color=fc, zorder=0, lw=0)
+        ax.text(xr, np.sqrt(y0 * min(y1, YT)), name, ha="right", va="center",
+                fontsize=9.5, color=tc, fontweight="bold", alpha=0.9, zorder=1)
+    ax.axhline(1.0, color="#3a4652", lw=0.9, zorder=1)
+
+    # dose-response series (connected, sequential red)
+    dl = np.array([R[s][0] for s in dose]); dlo = np.array([R[s][1] for s in dose])
+    dhi = np.array([R[s][2] for s in dose])
+    ax.plot(xdose, dl, "-", color="#ab1a4d", lw=1.6, alpha=0.55, zorder=3)
+    ax.errorbar(xdose, dl, yerr=[dl - dlo, dhi - dl], fmt="none", ecolor="#b9727f", lw=1.5,
+                capsize=3, zorder=4)
+    ax.scatter(xdose, dl, s=[70, 80, 95, 115, 140], c=ramp, zorder=5,
+               edgecolor="white", linewidth=1.1)
+    for x, s in zip(xdose, dose):
+        ax.annotate(f"{R[s][0]:.1f}", (x, R[s][2]), textcoords="offset points", xytext=(0, 7),
+                    ha="center", fontsize=9, fontweight="bold", color=INK, zorder=6)
+        ax.annotate(f"n={R[s][3]:,}", (x, R[s][1]), textcoords="offset points", xytext=(0, -13),
+                    ha="center", fontsize=7.3, color=MUT, zorder=6)
+
+    # reference markers (not on the dose trend)
+    for x, s, mk, fc in ((x_out, "outside", "o", "white"), (x_ben, "island+benign", "D", "#b6bcc6")):
+        lr, lolr, hilr = R[s][0], R[s][1], R[s][2]
+        ax.errorbar(x, lr, yerr=[[lr - lolr], [hilr - lr]], fmt="none", ecolor="#c7ccd4", lw=1.5,
+                    capsize=3, zorder=4)
+        ax.scatter([x], [lr], s=90, marker=mk, facecolor=fc, edgecolor="#5b6673",
+                   linewidth=1.3, zorder=5)
+        ax.annotate(f"{lr:.1f}", (x, hilr), textcoords="offset points", xytext=(0, 7),
+                    ha="center", fontsize=9, color="#5b6673", zorder=6)
+
+    ax.set_yscale("log"); ax.set_ylim(YB, YT); ax.set_xlim(-0.6, 6.7)
+    ax.tick_params(axis="y", length=0)
+    ax.set_yticks([1, 2, 5, 10, 20, 50, 100])
+    ax.set_yticklabels(["1", "2", "5", "10", "20", "50", "100"], fontsize=8.5, color="#3a4652")
+    ax.set_xticks([x_out, x_ben, *xdose])
+    ax.set_xticklabels(["outside\nisland", "benign-\ncontradicted", *dlab], fontsize=9, color=INK)
+    ax.annotate("other P/LP residues in the island  (leave-one-out)",
+                xy=(xdose.mean(), 0), xytext=(xdose.mean(), -0.20), textcoords=("data", "axes fraction"),
+                ha="center", fontsize=8.5, color=MUT, annotation_clip=False)
+    ax.annotate("", xy=(xdose[0] - 0.25, -0.15), xytext=(xdose[-1] + 0.25, -0.15),
+                xycoords=("data", "axes fraction"), textcoords=("data", "axes fraction"),
+                arrowprops=dict(arrowstyle="-", color="#c7ccd4", lw=0.9), annotation_clip=False)
+    ax.set_ylabel("Likelihood ratio for pathogenicity", fontsize=10)
+    fig.suptitle("Graded PM1 is empirically calibrated", x=0.5, y=0.99,
+                 fontsize=13, fontweight="bold", color=INK)
+    ax.set_title("Leave-one-out ClinVar likelihood ratio by AM-island context "
+                 "(46,955 P/LP vs 121,506 B/LB, 15,744 genes)",
+                 fontsize=9.2, color=MUT, pad=10)
+    fig.tight_layout(rect=[0, 0.02, 1, 0.97])
     for ext in ("svg", "png"):
         fig.savefig(f"{FIG_BASE}.{ext}", dpi=300, bbox_inches="tight", facecolor="white")
     print("\nsaved", FIG_BASE + ".svg / .png")
