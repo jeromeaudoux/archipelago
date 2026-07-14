@@ -65,6 +65,30 @@ export function renderBenchmark(root: HTMLElement, data: Data, loadBundle: LoadB
         <span class="dcat-blurb">${DCAT[k].blurb}</span></button>`;
     }).join("")}</div>`;
   }
+  function recalPanel(): string {
+    const hot = dc.fp_clinvar_hotspot || 0;
+    const drop = (dc.fn_weak_am || 0) + (dc.fn_not_missense || 0);
+    if (!hot && !drop) return "";
+    const tp2 = s.tp + hot, fp2 = s.fp - hot, fn2 = s.fn - drop;
+    const p2 = tp2 / (tp2 + fp2), r2 = tp2 / (tp2 + fn2), f2 = (2 * p2 * r2) / (p2 + r2);
+    const metric = (label: string, base: number, val: number, f1 = false) => {
+      const fmt = (x: number) => (f1 ? x.toFixed(2) : `${Math.round(x * 100)}%`);
+      return `<div class="recal-m"><span class="recal-l">${label}</span>
+        <span class="recal-v"><span class="recal-b">${fmt(base)}</span><span class="recal-arrow">→</span><span class="recal-n">${fmt(val)}</span></span></div>`;
+    };
+    return `<div class="recal">
+      <p class="recal-head">Recalibrated view
+        <span class="muted">— if the <b>${hot}</b> ClinVar-supported hotspots are counted as correct and the
+        <b>${drop}</b> sparse-evidence / non-missense cases are treated as out of PM1’s scope rather than misses:</span></p>
+      <div class="recal-metrics">
+        ${metric("Precision", s.precision, p2)}
+        ${metric("Recall", s.recall, r2)}
+        ${metric("F1", s.f1, f2, true)}
+      </div>
+      <p class="recal-note">Illustrative upper bound, not the headline result: it assumes every such call is genuinely
+        defensible. The strict ClinGen-matched numbers in the tiles above are the benchmark of record.</p>
+    </div>`;
+  }
   const dcatBreakdown = () => `
     <details class="dbreak" open>
       <summary class="dbreak-sum">Where do the engine and ClinGen diverge?
@@ -75,6 +99,7 @@ export function renderBenchmark(root: HTMLElement, data: Data, loadBundle: LoadB
       </div>
       ${dc.unmapped ? `<p class="dcat-note"><b>${dc.unmapped}</b> further variant${dc.unmapped === 1 ? " is" : "s are"} isoform-ambiguous
         (mapped to a different isoform than the AlphaMissense canonical sequence) and left uncategorised.</p>` : ""}
+      ${recalPanel()}
     </details>`;
 
   // per-gene aggregates
