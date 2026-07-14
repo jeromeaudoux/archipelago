@@ -1,7 +1,7 @@
 import "./styles.css";
 import { attachAutocomplete, type GeneEntry } from "./search";
 import { renderViewer, type Bundle } from "./viewer";
-import { methodsHTML } from "./methods";
+import { methodsHTML, drawMethodFigure } from "./methods";
 import { parseVariant, looksLikeVariant, renderPM1 } from "./pm1";
 import { renderBenchmark } from "./benchmark";
 import { downloadsHTML } from "./downloads";
@@ -80,6 +80,7 @@ function showMethods(push = true): void {
   show("about");
   document.title = "Methods — Archipelago";
   window.scrollTo(0, 0);
+  drawMethodFigure();
 }
 
 function showDownloads(push = true): void {

@@ -42,32 +42,12 @@ export function methodsHTML(): string {
     </ol>
 
     <figure class="svgfig">
-      <svg viewBox="0 0 720 250" role="img" aria-label="Island creation: per-residue AM score is smoothed, thresholded at 0.564, and contiguous runs of at least 35 residues become islands">
-        <!-- detected island bands -->
-        <rect x="118" y="24" width="140" height="150" fill="var(--isl-path)" opacity="0.16" rx="3" />
-        <rect x="438" y="24" width="140" height="150" fill="var(--isl-path)" opacity="0.16" rx="3" />
-        <!-- rejected short run -->
-        <rect x="338" y="24" width="26" height="150" fill="none" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3" rx="3" />
-        <!-- axes -->
-        <line x1="55" y1="174" x2="705" y2="174" stroke="var(--border)" stroke-width="1" />
-        <!-- threshold -->
-        <line x1="55" y1="94" x2="705" y2="94" stroke="var(--muted)" stroke-width="1" stroke-dasharray="5 4" />
-        <text x="60" y="88" fill="var(--muted)" font-size="11" font-family="var(--font-mono)">threshold 0.564</text>
-        <!-- raw (faint) -->
-        <path d="M60 150 L82 128 L98 150 L120 84 L138 66 L160 52 L182 70 L210 58 L232 78 L255 88 L272 150 L285 150 L310 150 L330 150 L345 66 L360 74 L375 150 L400 150 L420 150 L440 84 L462 58 L490 46 L515 66 L540 54 L560 82 L575 92 L598 150 L610 150 L700 150"
-          fill="none" stroke="var(--muted)" stroke-width="1" opacity="0.5" />
-        <!-- smoothed -->
-        <path d="M60 152 C80 150 96 140 120 92 S180 50 210 58 S262 84 285 150 L310 150 L332 150 L345 78 L360 80 L375 150 L400 150 L422 150 C446 150 462 66 490 52 S556 66 575 92 S610 150 700 150"
-          fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linejoin="round" />
-        <!-- labels -->
-        <text x="188" y="192" fill="var(--isl-path)" font-size="11.5" font-weight="600" text-anchor="middle">island ✓ ≥35 aa</text>
-        <text x="351" y="192" fill="var(--muted)" font-size="11" text-anchor="middle">✗ &lt;35 aa</text>
-        <text x="508" y="192" fill="var(--isl-path)" font-size="11.5" font-weight="600" text-anchor="middle">island ✓ ≥35 aa</text>
-        <text x="60" y="240" fill="var(--muted)" font-size="11">mean AM per residue &nbsp;→&nbsp; median-smooth &nbsp;→&nbsp; keep runs above threshold &nbsp;→&nbsp; length filter</text>
-        <text x="700" y="240" fill="var(--muted)" font-size="11" text-anchor="end">residue →</text>
-      </svg>
-      <figcaption>Per-residue mean AlphaMissense (faint) is median-smoothed (blue); contiguous
-        residues above 0.564 form islands, and runs shorter than 35 aa are discarded.</figcaption>
+      <canvas id="mfig" class="mfig" width="760" height="372"
+        role="img" aria-label="Island creation: the per-residue mean of the AlphaMissense substitution heatmap gives a spiky signal; median-smoothing and a 0.564 threshold with a minimum length define islands"></canvas>
+      <figcaption>The per-residue <b>mean</b> of the AlphaMissense substitution heatmap (bottom)
+        is a spiky signal (grey); median-smoothing (blue) and the 0.564 threshold with a
+        minimum-length filter turn sustained high-signal stretches into islands, while short
+        spikes are discarded.</figcaption>
     </figure>
 
     <p class="src">Reference implementation: <code>computeAlphaMissenseIslands.py</code>
@@ -147,4 +127,174 @@ export function methodsHTML(): string {
 
     <p class="back"><a href="?page=methods" data-home>← Back to search</a></p>
   </article>`;
+}
+
+// ---- realistic island-construction figure (canvas) ----
+type RGB = [number, number, number];
+const css = (v: string) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+function hexToRgb(h: string): RGB {
+  h = h.replace("#", "");
+  if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+}
+const mix = (a: RGB, b: RGB, t: number): RGB =>
+  [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+const rgb = (c: RGB) => `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`;
+
+/** Deterministic PRNG so the schematic is stable across renders. */
+function mulberry32(seed: number): () => number {
+  return () => {
+    seed |= 0; seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function median5(a: number[]): number[] {
+  const out = a.slice();
+  for (let i = 0; i < a.length; i++) {
+    const lo = Math.max(0, i - 2), hi = Math.min(a.length - 1, i + 2);
+    out[i] = a.slice(lo, hi + 1).sort((x, y) => x - y)[Math.floor((hi - lo) / 2)];
+  }
+  return out;
+}
+
+const N = 104, ROWS = 20, THRESH = 0.564, MIN_RUN = 16;
+
+function buildFigureData() {
+  const rnd = mulberry32(20240714);
+  // [start, end, height, rampWidth] — flat-topped plateaus (two wide, one narrow spike)
+  const bumps: [number, number, number, number][] = [
+    [12, 49, 0.64, 6],   // wide → island
+    [60, 69, 0.42, 5],   // narrow spike → rejected (never reaches its flat top)
+    [76, 101, 0.64, 6],  // wide → island
+  ];
+  const base = 0.27;
+  const raw: number[] = [];
+  for (let i = 0; i < N; i++) {
+    let v = base;
+    for (const [s, e, add, ramp] of bumps) {
+      if (i >= s && i <= e) v += add * Math.min(1, Math.min(i - s, e - i) / ramp);
+    }
+    v += (rnd() - 0.5) * 0.13;                        // spiky per-residue noise
+    if (rnd() < 0.09) v -= 0.12;                       // occasional tolerant residue
+    raw.push(Math.max(0.02, Math.min(0.98, v)));
+  }
+  const smooth = median5(raw);
+  // islands = smoothed runs above threshold; long ones pass, short ones rejected
+  const runs: { s: number; e: number; ok: boolean }[] = [];
+  let i = 0;
+  while (i < N) {
+    if (smooth[i] > THRESH) {
+      let j = i; while (j < N && smooth[j] > THRESH) j++;
+      runs.push({ s: i, e: j - 1, ok: j - i >= MIN_RUN }); i = j;
+    } else i++;
+  }
+  // heatmap cells: column mean tracks `raw`; per-row bias gives realistic texture
+  const rowBias = Array.from({ length: ROWS }, (_, r) => ((r / (ROWS - 1)) - 0.5) * 0.34);
+  const grid: number[][] = [];
+  const refRow: number[] = [];
+  for (let c = 0; c < N; c++) {
+    const col: number[] = [];
+    for (let r = 0; r < ROWS; r++) {
+      col.push(Math.max(0, Math.min(1, raw[c] + rowBias[r] + (rnd() - 0.5) * 0.4)));
+    }
+    grid.push(col);
+    refRow.push(Math.floor(rnd() * ROWS));
+  }
+  return { raw, smooth, runs, grid, refRow };
+}
+
+let FIG: ReturnType<typeof buildFigureData> | null = null;
+let figObserver: MutationObserver | null = null;
+
+export function drawMethodFigure(): void {
+  const cv = document.getElementById("mfig") as HTMLCanvasElement | null;
+  if (!cv) { figObserver?.disconnect(); figObserver = null; return; }
+  if (!FIG) FIG = buildFigureData();
+  const { raw, smooth, runs, grid, refRow } = FIG;
+
+  const W = 760, H = 372, dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = W * dpr; cv.height = H * dpr;
+  const ctx = cv.getContext("2d")!;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+
+  const padL = 52, padR = 16, plotW = W - padL - padR, colW = plotW / N;
+  const sy0 = 16, sy1 = 176;                          // signal panel (value 1 → 0)
+  const hy0 = 232, rowH = 6, hy1 = hy0 + ROWS * rowH; // heatmap panel
+  const Y = (v: number) => sy1 - v * (sy1 - sy0);
+  const X = (i: number) => padL + i * colW;
+
+  const stops = ["--am0", "--am1", "--am2", "--am3", "--am4"].map((v) => hexToRgb(css(v)));
+  const ramp = (v: number): RGB => {
+    const x = Math.max(0, Math.min(1, v)) * 4, k = Math.min(3, Math.floor(x));
+    return mix(stops[k], stops[k + 1], x - k);
+  };
+  const ink = css("--ink"), ink2 = css("--ink2"), muted = css("--muted");
+  const border = css("--border"), islp = css("--isl-path"), accent = css("--accent");
+  const refCol = css("--reference");
+
+  // heatmap
+  for (let c = 0; c < N; c++) {
+    for (let r = 0; r < ROWS; r++) {
+      ctx.fillStyle = r === refRow[c] ? refCol : rgb(ramp(grid[c][r]));
+      ctx.fillRect(X(c), hy0 + r * rowH, Math.ceil(colW) - 0.3, rowH - 0.3);
+    }
+  }
+
+  // island bands (both panels) + rejected run
+  for (const run of runs) {
+    const x = X(run.s), w = (run.e - run.s + 1) * colW;
+    if (run.ok) {
+      ctx.fillStyle = islp; ctx.globalAlpha = 0.15;
+      ctx.fillRect(x, sy0, w, sy1 - sy0);
+      ctx.globalAlpha = 0.1; ctx.fillRect(x, hy0, w, hy1 - hy0); ctx.globalAlpha = 1;
+    } else {
+      ctx.strokeStyle = muted; ctx.globalAlpha = 0.9; ctx.setLineDash([3, 3]); ctx.lineWidth = 1;
+      ctx.strokeRect(x + 0.5, sy0 + 0.5, w - 1, sy1 - sy0 - 1); ctx.setLineDash([]); ctx.globalAlpha = 1;
+    }
+  }
+
+  // baseline + threshold
+  ctx.strokeStyle = border; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(padL, sy1 + 0.5); ctx.lineTo(W - padR, sy1 + 0.5); ctx.stroke();
+  ctx.strokeStyle = muted; ctx.setLineDash([5, 4]);
+  ctx.beginPath(); ctx.moveTo(padL, Y(THRESH)); ctx.lineTo(W - padR, Y(THRESH)); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = muted; ctx.font = "11px ui-monospace,monospace"; ctx.textBaseline = "alphabetic";
+  ctx.textAlign = "left"; ctx.fillText("0.564", padL + 2, Y(THRESH) - 4);
+  ctx.textAlign = "right";
+  ctx.fillText("1.0", padL - 6, sy0 + 8); ctx.fillText("0", padL - 6, sy1);
+
+  // raw (spiky) + smoothed lines
+  const line = (arr: number[], color: string, w: number, alpha = 1) => {
+    ctx.strokeStyle = color; ctx.globalAlpha = alpha; ctx.lineWidth = w;
+    ctx.lineJoin = "round"; ctx.beginPath();
+    arr.forEach((v, i) => { const x = X(i) + colW / 2, y = Y(v); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+    ctx.stroke(); ctx.globalAlpha = 1;
+  };
+  line(raw, muted, 1, 0.6);
+  line(smooth, accent, 2.4);
+
+  // labels
+  ctx.textAlign = "center"; ctx.font = "600 11.5px ui-sans-serif,system-ui";
+  for (const run of runs) {
+    const cx = X((run.s + run.e) / 2) + colW / 2;
+    ctx.fillStyle = run.ok ? islp : muted;
+    ctx.fillText(run.ok ? "island ✓ ≥35 aa" : "✗ too short", cx, sy0 + 12);
+  }
+  ctx.fillStyle = ink; ctx.textAlign = "left"; ctx.font = "600 11px ui-sans-serif,system-ui";
+  ctx.fillText("Mean AlphaMissense per residue", padL, sy0 - 4 + 0);
+  // connector: heatmap → column mean
+  ctx.fillStyle = ink2; ctx.font = "11px ui-sans-serif,system-ui";
+  ctx.fillText("AlphaMissense heatmap — 20 substitutions per residue (column mean ↑ drives the signal)", padL, hy1 + 16);
+  ctx.fillStyle = muted; ctx.textAlign = "right";
+  ctx.fillText("residue →", W - padR, hy1 + 16);
+
+  // redraw on theme change while the figure is on screen
+  if (!figObserver) {
+    figObserver = new MutationObserver(() => drawMethodFigure());
+    figObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  }
 }
