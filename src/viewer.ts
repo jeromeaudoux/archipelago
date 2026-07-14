@@ -192,7 +192,7 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
           <button id="v-png" title="Download a PNG of the whole plot">Save PNG</button>
           <button id="v-fit">Fit</button>
           <label for="v-z">Zoom</label>
-          <input id="v-z" type="range" min="0.35" max="16" step="0.05" />
+          <input id="v-z" type="range" min="0.35" max="30" step="0.05" />
         </div>
       </div>
       <div class="plot">
@@ -209,12 +209,13 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
             <canvas id="v-heat"></canvas>
             <canvas id="v-axb"></canvas>
             <div class="xhair" id="v-xhair"></div>
+            <div class="zoomsel" id="v-zoomsel"></div>
           </div>
         </div>
       </div>
       <div class="hint">Heatmap cell = AlphaMissense pathogenicity for that substitution.
         Islands are colored by ClinVar overlap (red = pathogenic-heavy, blue = benign-heavy,
-        amber = none). ClinVar lollipops: P/LP up, B/LB down (size ∝ #records). Hover for details.</div>
+        amber = none). ClinVar lollipops: P/LP up, B/LB down (size ∝ #records). Hover for details; drag across the plot to zoom to a region, Fit to reset.</div>
     </div>
     <p class="vfoot">AlphaMissense (DeepMind, CC BY 4.0) · ClinVar P/LP + B/LB missense on
       <code>${b.refseq || "RefSeq"}</code> · UniProt domains · AM islands (score&gt;0.564, ≥35 aa).</p>
@@ -238,6 +239,10 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
   const xhair = $("v-xhair");
   const gutter = $("v-gutter");
   const heat = $("v-heat") as HTMLCanvasElement;
+  const zoomsel = $("v-zoomsel");
+  const MAXW = 30;
+  let dragX: number | null = null;
+  const plotX = (e: MouseEvent) => e.clientX - scroll.getBoundingClientRect().left + scroll.scrollLeft;
 
   const LANES = [
     { id: "v-axt", h: AXIS, label: "" },
@@ -450,6 +455,13 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
       + `<div class="row"><span>&nbsp;</span><b>${v.ref}${p}${v.alt} · ${v.n} record${v.n > 1 ? "s" : ""}</b></div>`;
   }
   function onMove(e: MouseEvent): void {
+    if (dragX !== null) {                        // rubber-band zoom selection
+      const x = plotX(e);
+      zoomsel.style.left = Math.min(x, dragX) + "px";
+      zoomsel.style.width = Math.abs(x - dragX) + "px";
+      tip.style.opacity = "0"; xhair.style.opacity = "0";
+      return;
+    }
     const rect = scroll.getBoundingClientRect();
     const xIn = e.clientX - rect.left + scroll.scrollLeft;
     const pi = Math.floor(xIn / colW);
@@ -567,8 +579,30 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
     }, "image/png");
   }
 
+  function startDrag(e: MouseEvent): void {
+    if (e.button !== 0) return;
+    dragX = plotX(e);
+    zoomsel.style.left = dragX + "px"; zoomsel.style.width = "0px";
+    zoomsel.style.height = LANES.reduce((s, l) => s + l.h, 0) + "px";
+    zoomsel.style.opacity = "1";
+    e.preventDefault();
+  }
+  function endDrag(e: MouseEvent): void {
+    if (dragX === null) return;
+    const lo = Math.min(plotX(e), dragX), hi = Math.max(plotX(e), dragX);
+    dragX = null; zoomsel.style.opacity = "0"; zoomsel.style.width = "0px";
+    if (hi - lo < 5) return;                     // treat as a click, not a zoom
+    const resLo = Math.max(1, Math.floor(lo / colW) + 1);
+    const resHi = Math.min(N, Math.ceil(hi / colW));
+    const span = Math.max(1, resHi - resLo + 1);
+    colW = Math.min(MAXW, Math.max(0.35, (scroll.clientWidth - 2) / span));
+    drawAll();
+    scroll.scrollLeft = (resLo - 1) * colW;
+  }
+  scroll.addEventListener("mousedown", startDrag);
   scroll.addEventListener("mousemove", onMove);
-  scroll.addEventListener("mouseleave", onLeave);
+  scroll.addEventListener("mouseup", endDrag);
+  scroll.addEventListener("mouseleave", (e) => { if (dragX !== null) endDrag(e); else onLeave(); });
   function fit(): void { colW = Math.max(0.35, (scroll.clientWidth - 2) / N); buildGutter(); drawAll(); }
   $("v-fit").addEventListener("click", fit);
   $("v-png").addEventListener("click", exportPNG);
