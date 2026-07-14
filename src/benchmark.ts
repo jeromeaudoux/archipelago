@@ -208,6 +208,7 @@ export function renderBenchmark(root: HTMLElement, data: Data, loadBundle: LoadB
       const gtr = t.closest<HTMLElement>("tr[data-gene]");
       if (gtr) { mode = "variant"; query = gtr.dataset.gene!; search.value = query;
         root.querySelectorAll(".bmodebtn").forEach((b) => b.classList.toggle("on", (b as HTMLElement).dataset.m === "variant"));
+        (root.querySelector("#bfilters") as HTMLElement).style.visibility = "visible";
         render(); }
       return;
     }
