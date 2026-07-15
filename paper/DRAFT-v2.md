@@ -383,6 +383,18 @@ Second, it strengthens the case for a **criterion-independent, reproducible** re
 definition: a variant either falls in an AlphaMissense island or it does not, identically
 for every substitution at a codon and for every gene, curated or not. [CITE:tp53vcep]
 
+### 3.6 Islands localise to independently-annotated functional regions
+
+If islands are to justify PM1 — a *critical, well-established functional domain* — they
+should coincide with functional regions defined without reference to AlphaMissense. Within
+the 6,148 island-bearing proteins we compared island to non-island residues for three such
+markers (Fig. 7). Island residues are enriched **2.3× (95 % gene-cluster CI 2.1–2.5) for
+UniProt functional domains** (33 % vs 17 % of residues), **4.3× (2.4–7.6) for cancer-hotspot
+residues** (cancerhotspots.org), and **4.7× (4.4–4.9) for gnomAD regional-missense-constrained
+regions** (43 % vs 14 %). Convergent enrichment across three orthogonal, non-AlphaMissense
+annotations argues that islands mark genuine functional criticality — the substance of PM1 —
+rather than the predictor's conservation signal alone.
+
 ## 4. Application: grading PM1 by cumulative evidence
 
 Island membership (a structural/predictive hotspot signal) is combined with in-island
@@ -455,6 +467,20 @@ little ClinVar** (74 % of islands overlap no ClinVar variant, §3.1) — precise
 tail where no PM1 rule exists today. There, islands can justify PM1 at **Supporting** by
 default (the graded framework, §4), extending a consistent hot-spot signal far beyond the
 few dozen expert-curated genes without over-calling.
+
+**Specific to PM1, not other criteria.** The mapping to PM1 is structural: the unit of the
+signal matches the unit of the criterion. An island is a *sub-genic region* of missense
+intolerance, which is exactly what PM1 asks for — and it localises to independently-annotated
+functional regions (§3.6) with a benign-exclusion clause (§4) mirroring PM1's own wording. It
+does not map onto the other missense criteria, whose granularities differ: **PP2** is a
+*gene-level* statement (missense is a common disease mechanism, low benign missense rate);
+**PP3/BP4** is a *per-variant* predictor (and §3.4 shows islands are non-redundant with it);
+**PM5/PS1** are *residue/allele*-specific. Islands operationalise the *"critical,
+well-established functional domain"* limb of PM1; the narrow recurrent-hotspot limb — which
+islands under-capture — is precisely the source of the sub-threshold-hotspot false negatives
+(§3.3). Concordance with expert PM1 (§3.2) is therefore corroborated by two stronger,
+label-independent lines: the signal is calibrated to pathogenicity (§4, Fig. 6) and orthogonal
+to PP3 (§3.4, Fig. 5) — the benchmark alone would not carry the claim.
 
 **Toward the revised ("v4") guidelines.** A joint ACMG/AMP/ClinGen working group is revising
 the 2015 framework toward a **quantitative, points-based and calibrated** model (building on
