@@ -529,6 +529,74 @@ justification + train/test split + sensitivity sweep (resolve docstring "≥11" 
 + paired test. **Medium** — hg19 provenance; isoform handling; coverage; RMC agreement;
 "islanding vs plain per-residue threshold" ablation; license NOTICE.
 
+## Figure legends
+
+**Figure 1. Construction of an AlphaMissense island.** Schematic on illustrative data. The
+per-residue **mean** of the AlphaMissense saturation heatmap (bottom; 19 substitutions per
+residue, diverging blue→red ramp) gives a spiky per-residue signal (grey); an edge-aware
+median filter (window 5) yields the smoothed track (blue). Contiguous stretches whose
+smoothed score exceeds the AlphaMissense "likely-pathogenic" boundary (0.564, dashed) and
+span ≥ 35 residues become islands (shaded); a short high-signal spike is rejected by the
+length filter.
+
+**Figure 2. The Archipelago browser (KIF1A).** Per-gene view: the AlphaMissense saturation
+heatmap, the mean-AM track, AM islands coloured by ClinVar overlap (pathogenic-heavy = red,
+benign-heavy = blue, none = amber), ClinVar P/LP (up) and B/LB (down) missense lollipops with
+height encoding ClinVar review stars, UniProt domains, gnomAD missense o/e and cancer-hotspot
+tracks, an exon-boundary axis, and summary KPIs. Motor-domain islands are pathogenic-enriched
+(red); a C-terminal island reads benign (blue). Live at archipelago2.vercel.app.
+
+**Figure 3. PM1 benchmark against ClinGen expert curation (eRepo).** **(A)** Precision–recall
+of island-based PM1 versus Franklin and InterVar against expert-applied PM1, with F1
+iso-contours (dashed); the open point and arrow show the recalibrated operating point
+(defensible ClinVar-supported-hotspot false positives counted correct; out-of-scope
+sparse-evidence and non-missense false negatives removed). **(B)** Residue-level divergence
+taxonomy of the 604 false negatives and 266 false positives, categorised from each variant's
+AlphaMissense/ClinVar neighbourhood (±10 aa); segment counts are variant numbers. Derived from
+`public/data/pm1_benchmark.json`.
+
+**Figure 4. Star-weighted ClinVar view (BRCA1).** The Archipelago ClinVar track with lollipop
+height proportional to ClinVar review status (0–4 gold stars); high-confidence expert-panel
+P/LP calls concentrate in the RING and BRCT regions the BRCA1 VCEP treats as PM1 territory,
+co-locating with AM islands.
+
+**Figure 5. Islands are orthogonal to the per-variant PP3 predictor.** On 3,133
+ClinVar-labelled missense variants (1,244 P/LP, 1,889 B/LB), the pathogenic rate of in-island
+(solid) versus out-of-island (dashed) variants within deciles of each per-variant predictor —
+**(A)** AlphaMissense, **(B)** REVEL, **(C)** CADD — with Wilson 95 % bands. Boxes give the
+Cochran–Mantel–Haenszel odds ratio for island membership conditioning on the predictor decile
+(gene-cluster bootstrap CI) and the p-value. At fixed REVEL or CADD, island membership raises
+pathogenicity odds ~5× (non-redundant, co-application with PP3 is not double-counting);
+conditioned on AlphaMissense itself it adds nothing (n.s.), i.e. the island is a smoothed
+restatement of the per-residue AM score.
+
+**Figure 6. Graded-PM1 calibration.** Likelihood ratio for pathogenicity by AM-island context,
+estimated against a ClinVar reference (46,955 P/LP, 121,506 B/LB, 15,744 genes) using
+**leave-one-out ClinVar** (the island's P/LP and B/LB counts with the focal residue removed).
+Shaded bands mark the Tavtigian OddsPath thresholds for Supporting (2.08), Moderate (4.33) and
+Strong (18.7). An island with no ClinVar corroboration already reaches Supporting (LR 2.5), and
+in-island corroboration produces a dose-response into Moderate and Strong; the
+benign-contradicted and outside-island strata (grey) are downweighted. Points are point
+estimates; whiskers are gene-cluster bootstrap 95 % CIs.
+
+**Figure 7. AlphaMissense islands localise to independently-annotated functional regions.**
+Within the 6,148 proteins that contain at least one island, each residue was classified as
+island or non-island and tested against three markers of functional criticality defined
+**independently of AlphaMissense**: membership in a **UniProt functional domain**; being a
+**cancer-hotspot residue** (cancerhotspots.org, within ±2 aa); and lying in a **gnomAD
+regional-missense-constrained region** (sub-regional observed/expected < 0.6). **(A)**
+Prevalence — the percentage of island residues (coloured) versus non-island residues (grey)
+carrying each annotation. **(B)** Enrichment — the pooled odds ratio for an island residue
+(vs a non-island residue of the same proteins) carrying the annotation, on a log scale; points
+are the point estimate, bars the 95 % confidence interval from a gene-cluster bootstrap (400
+resamples). Island residues are enriched 2.3× for UniProt domains, 4.3× for cancer hotspots
+and 4.7× for constrained regions (all CIs exclude 1). Convergent enrichment across three
+orthogonal annotations indicates islands mark genuine functional criticality — the substance
+of PM1 — rather than the predictor's conservation signal alone. Comparing island to non-island
+residues *within the same proteins* controls for protein-level composition; note that gnomAD
+constraint and AlphaMissense both reflect intolerance (independent data sources but
+correlated), whereas UniProt domains and cancer hotspots are fully independent.
+
 ## References
 
 *Keys map to `[CITE:key]` above. `[verify]` = confirm ID at submission. Full annotations
