@@ -269,6 +269,16 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
   // scroll/hover geometry is unchanged — only the pixel buffer downscales past the limit.
   const MAX_CANVAS_DIM = 30000;
   let colW = 1;
+  // Virtualised rendering: canvases are only viewport-wide and redrawn on scroll, so the
+  // backing store never approaches the browser's max-canvas-dimension no matter how far a
+  // long protein is zoomed. `viewW` = visible plot width, `scrollX` = horizontal offset,
+  // both in CSS px; draw functions work in full-protein coordinates and are translated.
+  let viewW = 1;
+  let scrollX = 0;
+  const visRange = (): [number, number] => [
+    Math.max(0, Math.floor(scrollX / colW) - 1),
+    Math.min(N - 1, Math.ceil((scrollX + viewW) / colW) + 1),
+  ];
   let LUT = rampLUT();
   const refreshColors = () => {
     LUT = rampLUT();
@@ -283,12 +293,14 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
   const X = (p: number) => (p - 1) * colW;
   function ctxFor(id: string, h: number): CanvasRenderingContext2D {
     const cv = $(id) as HTMLCanvasElement;
-    const w = contentW();
-    const sx = Math.min(dpr, MAX_CANVAS_DIM / w);   // clamp backing width to the browser limit
-    cv.style.width = w + "px"; cv.style.height = h + "px";
-    cv.width = Math.max(1, Math.round(w * sx)); cv.height = Math.round(h * dpr);
+    // Canvas spans only the visible width; sx = dpr on screen (viewW small), and clamps in
+    // the full-width export path where viewW is set to contentW.
+    const sx = Math.min(dpr, MAX_CANVAS_DIM / Math.max(1, viewW));
+    cv.style.width = viewW + "px"; cv.style.height = h + "px";
+    cv.width = Math.max(1, Math.round(viewW * sx)); cv.height = Math.round(h * dpr);
     const ctx = cv.getContext("2d")!;
-    ctx.setTransform(sx, 0, 0, dpr, 0, 0);
+    // draw in full-protein coordinates (X(p) = (p-1)*colW); shift the visible window into view
+    ctx.setTransform(sx, 0, 0, dpr, -Math.round(scrollX * sx), 0);
     return ctx;
   }
 
@@ -322,7 +334,8 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
     const gap = colW >= 4 ? 1 : 0;
     const rw = Math.max(colW - gap, colW < 1 ? colW : 0.6);
     const refCol = css("--reference");
-    for (let pi = 0; pi < N; pi++) {
+    const [lo, hi] = visRange();
+    for (let pi = lo; pi <= hi; pi++) {
       const base = pi * AA.length; const x = pi * colW;
       for (let r = 0; r < AA.length; r++) {
         const val = grid[base + r];
@@ -340,14 +353,15 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
     for (const v of [CUTOFF_B, CUTOFF_P]) {
       ctx.beginPath(); ctx.moveTo(0, scoreY(v) + 0.5); ctx.lineTo(contentW(), scoreY(v) + 0.5); ctx.stroke();
     }
+    const [lo, hi] = visRange();
     const area = new Path2D(); let st = false, lastX = 0;
-    for (let pi = 0; pi < N; pi++) {
+    for (let pi = lo; pi <= hi; pi++) {
       const m = b.mean[pi]; const x = pi * colW + colW / 2;
       if (m != null) { const y = scoreY(m); if (!st) { area.moveTo(x, scoreY(0)); area.lineTo(x, y); st = true; } else area.lineTo(x, y); lastX = x; }
     }
     if (st) { area.lineTo(lastX, scoreY(0)); area.closePath(); ctx.fillStyle = css("--score-fill"); ctx.fill(area); }
     ctx.beginPath(); st = false;
-    for (let pi = 0; pi < N; pi++) {
+    for (let pi = lo; pi <= hi; pi++) {
       const m = b.mean[pi]; const x = pi * colW + colW / 2;
       if (m != null) { const y = scoreY(m); if (!st) { ctx.moveTo(x, y); st = true; } else ctx.lineTo(x, y); }
     }
@@ -474,17 +488,22 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
     }
   }
 
-  function drawAll(): void {
-    const w = contentW();
-    stack.style.width = w + "px";
-    ($("v-z") as HTMLInputElement).value = String(colW);
-    laneCV.h = Math.round(CVH * cvZoom());   // keep gutter + canvas in sync with zoom
-    buildGutter();
+  function render(): void {                   // repaint canvases for the current window
+    viewW = Math.max(1, scroll.clientWidth);
+    scrollX = scroll.scrollLeft;
     drawHeat(); drawScore(); drawClinvar(); drawIsl(); drawDom();
     if (hasHot) drawHotspots();
     if (hasRmc) drawRmc();
     drawAxis("v-axt", true); drawAxis("v-axb", false);
+  }
+
+  function drawAll(): void {                   // full layout pass (zoom / fit / resize / theme)
+    stack.style.width = contentW() + "px";
+    ($("v-z") as HTMLInputElement).value = String(colW);
+    laneCV.h = Math.round(CVH * cvZoom());     // keep gutter + canvas in sync with zoom
+    buildGutter();
     xhair.style.height = LANES.reduce((s, l) => s + l.h, 0) + "px";
+    render();
   }
 
   const CLS = (s: number) => (s >= CUTOFF_P ? "likely pathogenic" : s <= CUTOFF_B ? "likely benign" : "ambiguous");
@@ -553,6 +572,10 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
     const w = contentW();
     const lanesH = LANES.reduce((s, l) => s + l.h, 0);
     const W = GUT + w + PAD;
+    // render every lane at full protein width so the composite below captures it all
+    // (backing store is clamped in ctxFor); the viewport is repainted before returning.
+    const savedVW = viewW, savedSX = scrollX;
+    viewW = w; scrollX = 0; render();
 
     // Legend mirrors the on-screen one, including the conditional tracks; it wraps
     // to as many rows as the export width needs so nothing is clipped.
@@ -651,6 +674,7 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
     ctx.fillText("AlphaMissense (DeepMind, CC BY 4.0) · ClinVar · UniProt domains · am-islands-viewer",
       PAD, H - 8);
 
+    viewW = savedVW; scrollX = savedSX; render();   // restore the on-screen viewport
     out.toBlob((blob) => {
       if (!blob) return;
       const url = URL.createObjectURL(blob);
@@ -680,6 +704,11 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
     drawAll();
     scroll.scrollLeft = (resLo - 1) * colW;
   }
+  let scrollRAF = 0;
+  scroll.addEventListener("scroll", () => {
+    if (scrollRAF) return;
+    scrollRAF = requestAnimationFrame(() => { scrollRAF = 0; render(); });
+  });
   scroll.addEventListener("mousedown", startDrag);
   scroll.addEventListener("mousemove", onMove);
   scroll.addEventListener("mouseup", endDrag);

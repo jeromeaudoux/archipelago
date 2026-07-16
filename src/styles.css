@@ -209,7 +209,7 @@ button:focus-visible, input:focus-visible, .chip:focus-visible {
 .grow { position: absolute; right: 8px; font-family: var(--font-mono); font-size: 10px; color: var(--ink2); transform: translateY(-50%); width: 94px; text-align: right; }
 .scroll { flex: 1 1 auto; overflow-x: auto; overflow-y: hidden; position: relative; }
 .stack { position: relative; }
-.stack canvas { display: block; }
+.stack canvas { display: block; position: sticky; left: 0; }
 .xhair { position: absolute; top: 0; width: 1px; background: var(--ink); opacity: 0; pointer-events: none; z-index: 3; }
 .stack { cursor: crosshair; }
 .zoomsel { position: absolute; top: 0; opacity: 0; pointer-events: none; z-index: 4;
