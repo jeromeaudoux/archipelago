@@ -279,6 +279,9 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
     Math.max(0, Math.floor(scrollX / colW) - 1),
     Math.min(N - 1, Math.ceil((scrollX + viewW) / colW) + 1),
   ];
+  // Minimum zoom = the level at which the whole protein just fills the viewport ("fit");
+  // zooming out further would leave empty space, so this is the slider's lower bound.
+  const minColW = () => Math.max(0.05, (scroll.clientWidth - 2) / N);
   let LUT = rampLUT();
   const refreshColors = () => {
     LUT = rampLUT();
@@ -504,8 +507,11 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
   }
 
   function drawAll(): void {                   // full layout pass (zoom / fit / resize / theme)
+    const mn = minColW(), mx = Math.max(MAXW, mn);
+    colW = Math.min(mx, Math.max(mn, colW));   // never zoom out past fit (fills the viewport)
+    const zEl = $("v-z") as HTMLInputElement;
+    zEl.min = String(mn); zEl.max = String(mx); zEl.value = String(colW);
     stack.style.width = contentW() + "px";
-    ($("v-z") as HTMLInputElement).value = String(colW);
     laneCV.h = Math.round(CVH * cvZoom());     // keep gutter + canvas in sync with zoom
     buildGutter();
     xhair.style.height = LANES.reduce((s, l) => s + l.h, 0) + "px";
@@ -719,7 +725,7 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
   scroll.addEventListener("mousemove", onMove);
   scroll.addEventListener("mouseup", endDrag);
   scroll.addEventListener("mouseleave", (e) => { if (dragX !== null) endDrag(e); else onLeave(); });
-  function fit(): void { colW = Math.max(0.35, (scroll.clientWidth - 2) / N); drawAll(); scroll.scrollLeft = 0; }
+  function fit(): void { colW = minColW(); drawAll(); scroll.scrollLeft = 0; }
   $("v-fit").addEventListener("click", fit);
   $("v-png").addEventListener("click", exportPNG);
   ($("v-z") as HTMLInputElement).addEventListener("input", (e) => {
