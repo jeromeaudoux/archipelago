@@ -69,8 +69,16 @@ def _load_islands(key_col):
             islands[k].append(
                 {"s": int(f[7]), "e": int(f[8]), "m": round(float(f[5]), 4)}
             )
-    for v in islands.values():
-        v.sort(key=lambda d: d["s"])
+    # One UniProt can map to several Ensembl transcripts, each contributing an
+    # identical protein-coordinate island row; collapse duplicates by (s, e),
+    # keeping the strongest mean.
+    for k, v in islands.items():
+        best = {}
+        for d in v:
+            key = (d["s"], d["e"])
+            if key not in best or d["m"] > best[key]["m"]:
+                best[key] = d
+        islands[k] = sorted(best.values(), key=lambda d: d["s"])
     return islands
 
 
