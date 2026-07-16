@@ -194,7 +194,7 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
           <button id="v-png" title="Download a PNG of the whole plot">Save PNG</button>
           <button id="v-fit">Fit</button>
           <label for="v-z">Zoom</label>
-          <input id="v-z" type="range" min="0.35" max="30" step="0.05" />
+          <input id="v-z" type="range" min="0.35" max="60" step="0.05" />
         </div>
       </div>
       <div class="plot">
@@ -242,7 +242,7 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
   const gutter = $("v-gutter");
   const heat = $("v-heat") as HTMLCanvasElement;
   const zoomsel = $("v-zoomsel");
-  const MAXW = 30;
+  const MAXW = 60;
   let dragX: number | null = null;
   const plotX = (e: MouseEvent) => e.clientX - scroll.getBoundingClientRect().left + scroll.scrollLeft;
 
@@ -263,6 +263,11 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
   const CV_ZMAX = 2.4;
   const cvZoom = () => Math.min(CV_ZMAX, Math.max(1, colW / 4));
   const dpr = Math.max(1, window.devicePixelRatio || 1);
+  // Browsers cap canvas backing-store dimensions (~32k px in Firefox, higher in Chrome).
+  // A long protein zoomed in makes contentW × dpr exceed that and the canvas fails to
+  // allocate (blank/crash). Clamp the backing width; the CSS width stays contentW so
+  // scroll/hover geometry is unchanged — only the pixel buffer downscales past the limit.
+  const MAX_CANVAS_DIM = 30000;
   let colW = 1;
   let LUT = rampLUT();
   const refreshColors = () => {
@@ -279,10 +284,11 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
   function ctxFor(id: string, h: number): CanvasRenderingContext2D {
     const cv = $(id) as HTMLCanvasElement;
     const w = contentW();
+    const sx = Math.min(dpr, MAX_CANVAS_DIM / w);   // clamp backing width to the browser limit
     cv.style.width = w + "px"; cv.style.height = h + "px";
-    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    cv.width = Math.max(1, Math.round(w * sx)); cv.height = Math.round(h * dpr);
     const ctx = cv.getContext("2d")!;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.setTransform(sx, 0, 0, dpr, 0, 0);
     return ctx;
   }
 
@@ -601,9 +607,10 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
     const LEGEND = legendRows * ROW_H + 8;
     const H = HEADER + LEGEND + lanesH + FOOT + PAD;
     const out = document.createElement("canvas");
-    out.width = W * S; out.height = H * S;
+    const S2 = Math.min(S, MAX_CANVAS_DIM / W);       // clamp export width to the browser limit
+    out.width = Math.round(W * S2); out.height = Math.round(H * S2);
     const ctx = out.getContext("2d")!;
-    ctx.scale(S, S);
+    ctx.scale(S2, S2);
     const ink = css("--ink"), ink2 = css("--ink2"), muted = css("--muted");
 
     ctx.fillStyle = css("--panel"); ctx.fillRect(0, 0, W, H);
