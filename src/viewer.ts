@@ -490,7 +490,13 @@ export function renderViewer(root: HTMLElement, b: Bundle): void {
 
   function render(): void {                   // repaint canvases for the current window
     viewW = Math.max(1, scroll.clientWidth);
-    scrollX = scroll.scrollLeft;
+    // Clamp the scroll offset to the current content: after zooming out while scrolled
+    // right, scroll.scrollLeft can momentarily exceed the (now smaller) contentW, which
+    // would leave the visible window past the protein and blank every lane. Correct the
+    // DOM offset and the value we draw with so the view can never disappear.
+    const maxScroll = Math.max(0, contentW() - viewW);
+    if (scroll.scrollLeft > maxScroll) scroll.scrollLeft = maxScroll;
+    scrollX = Math.min(scroll.scrollLeft, maxScroll);
     drawHeat(); drawScore(); drawClinvar(); drawIsl(); drawDom();
     if (hasHot) drawHotspots();
     if (hasRmc) drawRmc();
